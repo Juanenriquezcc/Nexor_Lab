@@ -1,0 +1,49 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>NEXOR</title>
+  <defs>
+    <linearGradient id="nexor-vector" x1="17" y1="47" x2="49" y2="17" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Diamond manifold -->
+  <path
+    d="M32 8L55 21L32 34L9 21L32 8Z"
+    stroke="#64748B"
+    stroke-width="2"
+    stroke-linejoin="round"
+    opacity=".72"
+  />
+  <path
+    d="M32 34V56M9 21L32 34L55 21"
+    stroke="#1E293B"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Curved surface -->
+  <path
+    d="M13 48C22 30 42 30 51 48"
+    stroke="url(#nexor-vector)"
+    stroke-width="4"
+    stroke-linecap="round"
+  />
+
+  <!-- Tangent direction -->
+  <path
+    d="M18 51L44 25"
+    stroke="#06B6D4"
+    stroke-width="3"
+    stroke-linecap="round"
+  />
+  <path
+    d="M44 25L42 33L37 28L44 25Z"
+    fill="#06B6D4"
+  />
+
+  <!-- Central stationary point -->
+  <circle cx="32" cy="34" r="4" fill="#3B82F6"/>
+  <circle cx="32" cy="34" r="7" stroke="#60A5FA" stroke-width="1.5" opacity=".72"/>
+</svg>

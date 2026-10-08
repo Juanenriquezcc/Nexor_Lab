@@ -1,0 +1,63 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+:root {
+  /* Values come from tailwind.config.js (colors.nexor). */
+  --nexor-bg: theme("colors.nexor.bg");
+  --nexor-panel: theme("colors.nexor.panel");
+  --nexor-elevated: theme("colors.nexor.elevated");
+  --nexor-interactive: theme("colors.nexor.interactive");
+  --nexor-border: theme("colors.nexor.border");
+  --nexor-blue: theme("colors.nexor.blue");
+  --nexor-cyan: theme("colors.nexor.cyan");
+  --nexor-purple: theme("colors.nexor.purple");
+  --nexor-green: theme("colors.nexor.green");
+  --nexor-amber: theme("colors.nexor.amber");
+  --nexor-red: theme("colors.nexor.red");
+  --nexor-text: theme("colors.nexor.text");
+  --nexor-muted: theme("colors.nexor.muted");
+  --nexor-font-mono: theme("fontFamily.mono");
+  font-family: theme("fontFamily.sans");
+  color: var(--nexor-text);
+  background: var(--nexor-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  width: 100%;
+  margin: 0;
+  background: var(--nexor-bg);
+}
+
+body {
+  overflow-x: hidden;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--nexor-cyan);
+  outline-offset: 2px;
+}
+
+/* Touch targets: shared controls reach ~44px on phones and tablets. */
+@media (max-width: 1023px) {
+  [data-slot="button"],
+  [data-slot="input"],
+  select {
+    min-height: 44px;
+  }
+}

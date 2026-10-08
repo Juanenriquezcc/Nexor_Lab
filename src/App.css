@@ -1,0 +1,884 @@
+#root {
+  min-height: 100%;
+}
+
+/* ---------- Shell ---------- */
+
+.nexor-shell {
+  min-height: 100vh;
+  background: var(--nexor-bg);
+  color: var(--nexor-text);
+}
+
+.nexor-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 20;
+  width: 248px;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--nexor-bg) 70%, black);
+  padding: 20px 14px;
+}
+
+.nexor-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  height: 64px;
+  align-items: center;
+  gap: 12px;
+  background: color-mix(in srgb, var(--nexor-bg) 90%, transparent);
+  padding: 0 16px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--nexor-border) 70%, transparent);
+}
+
+.nexor-content {
+  min-width: 0;
+  padding: 16px 16px 48px;
+}
+
+.nexor-mobile-nav {
+  border-bottom: 1px solid var(--nexor-border);
+  background: var(--nexor-bg);
+  padding: 16px;
+}
+
+.nexor-eyebrow {
+  color: var(--nexor-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.nexor-mono-label {
+  color: #7c8aa0;
+  font-family: var(--nexor-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nexor-nav-item {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: left;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.nexor-nav-item:hover:not(:disabled),
+.nexor-nav-item:focus-visible {
+  background: var(--nexor-elevated);
+  color: var(--nexor-text);
+}
+
+.nexor-nav-item-active {
+  background: var(--nexor-elevated);
+  color: var(--nexor-text);
+  box-shadow: inset 2px 0 0 var(--nexor-cyan);
+}
+
+.nexor-nav-item-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.nexor-history-item {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  overflow: hidden;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #94a3b8;
+  font-family: var(--nexor-font-mono);
+  font-size: 12px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexor-history-item:hover,
+.nexor-history-item:focus-visible {
+  background: var(--nexor-elevated);
+  color: var(--nexor-text);
+}
+
+.nexor-history:focus {
+  outline: none;
+}
+
+.nexor-history:focus-visible {
+  outline: 2px solid var(--nexor-cyan);
+  outline-offset: 4px;
+}
+
+.nexor-icon-button {
+  display: inline-flex;
+  height: 44px;
+  width: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--nexor-elevated);
+  color: var(--nexor-text);
+}
+
+.nexor-new-analysis {
+  display: inline-flex;
+  min-height: 44px;
+  min-width: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nexor-blue) 16%, var(--nexor-panel));
+  padding: 0 14px;
+  color: var(--nexor-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.nexor-new-analysis:hover,
+.nexor-new-analysis:focus-visible {
+  background: color-mix(in srgb, var(--nexor-blue) 26%, var(--nexor-panel));
+}
+
+/* ---------- Topbar context ---------- */
+
+.nexor-context {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.nexor-context-expression {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--nexor-text);
+  font-family: var(--nexor-font-mono);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexor-context-signature {
+  color: var(--nexor-cyan);
+}
+
+.nexor-context-chip {
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--nexor-elevated);
+  padding: 3px 8px;
+  color: var(--nexor-muted);
+  font-family: var(--nexor-font-mono);
+  font-size: 12px;
+}
+
+.nexor-context-invalid {
+  color: var(--nexor-red);
+  font-family: var(--nexor-font-mono);
+  font-size: 13px;
+}
+
+/* ---------- Workspace composition ---------- */
+
+.nexor-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "equation"
+    "explore"
+    "operation"
+    "viz";
+  gap: 16px;
+  margin: 0 auto;
+  max-width: 1480px;
+}
+
+.nexor-area-equation { grid-area: equation; }
+.nexor-area-explore { grid-area: explore; min-width: 0; }
+.nexor-area-operation { grid-area: operation; }
+.nexor-area-viz { grid-area: viz; }
+
+.nexor-panel {
+  min-width: 0;
+  border-radius: 12px;
+  background: var(--nexor-panel);
+  padding: 16px;
+}
+
+.nexor-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.nexor-section-title {
+  margin-top: 4px;
+  color: var(--nexor-text);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.nexor-empty-note {
+  border-radius: 10px;
+  background: var(--nexor-elevated);
+  padding: 16px;
+  color: var(--nexor-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* ---------- Equation ---------- */
+
+.nexor-panel-equation {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--nexor-blue) 9%, transparent), transparent 60%),
+    var(--nexor-panel);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nexor-blue) 22%, transparent);
+}
+
+.nexor-equation-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nexor-equation-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--nexor-green);
+  font-family: var(--nexor-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.nexor-equation-state-error {
+  color: var(--nexor-red);
+}
+
+.nexor-state-dot {
+  height: 6px;
+  width: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.nexor-equation-field {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  background: var(--nexor-bg);
+  padding: 4px 14px;
+  box-shadow: inset 0 0 0 1px var(--nexor-border);
+  transition: box-shadow 160ms ease;
+}
+
+.nexor-equation-field:focus-within {
+  box-shadow: inset 0 0 0 1px var(--nexor-cyan), 0 0 0 3px color-mix(in srgb, var(--nexor-cyan) 16%, transparent);
+}
+
+.nexor-equation-field-error,
+.nexor-equation-field-error:focus-within {
+  box-shadow: inset 0 0 0 1px var(--nexor-red);
+}
+
+.nexor-equation-signature {
+  flex-shrink: 0;
+  color: var(--nexor-cyan);
+  font-family: var(--nexor-font-mono);
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+}
+
+.nexor-equation-input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 12px 0;
+  color: var(--nexor-text);
+  font-family: var(--nexor-font-mono);
+  font-size: clamp(1.15rem, 2.4vw, 1.6rem);
+  line-height: 1.4;
+  outline: none;
+}
+
+.nexor-equation-input:focus-visible {
+  outline: none;
+}
+
+.nexor-equation-input::placeholder {
+  color: #475569;
+}
+
+.nexor-equation-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nexor-equation-help {
+  min-width: 0;
+  color: var(--nexor-muted);
+  font-size: 12px;
+}
+
+.nexor-variable-list {
+  color: var(--nexor-text);
+  font-family: var(--nexor-font-mono);
+  font-size: 13px;
+}
+
+.nexor-equation-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.nexor-editor-action {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  background: var(--nexor-elevated);
+  padding: 0 12px;
+  color: var(--nexor-muted);
+  font-size: 12px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.nexor-editor-action:hover:not(:disabled),
+.nexor-editor-action:focus-visible {
+  background: var(--nexor-interactive);
+  color: var(--nexor-text);
+}
+
+.nexor-editor-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.nexor-examples {
+  margin-top: 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nexor-elevated) 70%, transparent);
+  padding: 4px 12px;
+}
+
+.nexor-examples > summary {
+  display: flex;
+  min-height: 40px;
+  cursor: pointer;
+  align-items: center;
+  color: var(--nexor-muted);
+  font-size: 13px;
+  list-style: none;
+}
+
+.nexor-examples > summary::-webkit-details-marker {
+  display: none;
+}
+
+.nexor-examples > summary::before {
+  content: "▸";
+  margin-right: 8px;
+  color: var(--nexor-cyan);
+}
+
+.nexor-examples[open] > summary::before {
+  content: "▾";
+}
+
+.nexor-examples[open] {
+  padding-bottom: 12px;
+}
+
+/* ---------- Explore ---------- */
+
+.nexor-explore {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--nexor-purple) 7%, transparent), transparent 55%),
+    var(--nexor-panel);
+}
+
+.nexor-explore-cards {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+}
+
+.nexor-explore-card {
+  display: grid;
+  min-height: 64px;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border-radius: 10px;
+  background: var(--nexor-elevated);
+  padding: 10px 12px;
+  text-align: left;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.nexor-explore-card:hover,
+.nexor-explore-card:focus-visible {
+  background: var(--nexor-interactive);
+}
+
+.nexor-explore-card-active,
+.nexor-explore-card-active:hover {
+  background: color-mix(in srgb, var(--nexor-blue) 16%, var(--nexor-elevated));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nexor-cyan) 60%, transparent);
+}
+
+.nexor-explore-icon {
+  display: inline-flex;
+  height: 34px;
+  width: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nexor-purple) 14%, transparent);
+  color: var(--nexor-cyan);
+}
+
+.nexor-explore-icon svg {
+  height: 16px;
+  width: 16px;
+}
+
+.nexor-explore-card-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.nexor-explore-card-title {
+  color: var(--nexor-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.nexor-explore-card-description {
+  color: var(--nexor-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ---------- Operation modules ---------- */
+
+.nexor-module {
+  display: grid;
+  gap: 16px;
+}
+
+.nexor-module-config {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+
+
+.nexor-result-formula {
+  display: grid;
+  gap: 4px;
+  overflow-x: auto;
+  color: var(--nexor-text);
+  font-family: var(--nexor-font-mono);
+  font-size: 15px;
+}
+
+.nexor-result-values {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+}
+
+.nexor-result-values > div {
+  display: grid;
+  gap: 2px;
+}
+
+.nexor-result-label {
+  color: var(--nexor-muted);
+  font-size: 12px;
+}
+
+.nexor-result-number {
+  color: var(--nexor-text);
+  font-family: var(--nexor-font-mono);
+  font-size: 17px;
+}
+
+/* ---------- Visualization ---------- */
+
+.nexor-area-viz {
+  display: flex;
+  flex-direction: column;
+}
+
+.nexor-viz-plot {
+  position: relative;
+  /* Phones: at most ~45% of the initial viewport. */
+  height: clamp(260px, 42vh, 380px);
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--nexor-bg) 60%, var(--nexor-panel));
+}
+
+.nexor-hud {
+  display: grid;
+  gap: 6px 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  margin-top: 10px;
+  border-radius: 10px;
+  background: var(--nexor-elevated);
+  padding: 10px 14px;
+  box-shadow: inset 2px 0 0 var(--nexor-amber);
+}
+
+.nexor-hud > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.nexor-hud dt {
+  flex-shrink: 0;
+  color: var(--nexor-muted);
+  font-family: var(--nexor-font-mono);
+  font-size: 12px;
+}
+
+.nexor-hud dt::after {
+  content: " =";
+}
+
+.nexor-hud dd {
+  overflow: hidden;
+  color: var(--nexor-text);
+  font-family: var(--nexor-font-mono);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexor-layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.nexor-layer-toggle {
+  display: inline-flex;
+  min-height: 32px;
+  cursor: pointer;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  background: var(--nexor-elevated);
+  padding: 0 12px;
+  color: var(--nexor-muted);
+  font-size: 12px;
+}
+
+.nexor-layer-toggle:has(input:checked) {
+  background: color-mix(in srgb, var(--nexor-cyan) 14%, var(--nexor-elevated));
+  color: var(--nexor-text);
+}
+
+.nexor-layer-toggle input {
+  accent-color: var(--nexor-cyan);
+}
+
+.nexor-layer-toggle:focus-within {
+  outline: 2px solid var(--nexor-cyan);
+  outline-offset: 2px;
+}
+
+.nexor-viz-reset {
+  /* Bottom-right: below the colour bar, away from the axis labels. */
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nexor-panel) 85%, transparent);
+  padding: 0 10px;
+  color: var(--nexor-muted);
+  font-size: 12px;
+}
+
+.nexor-viz-reset:hover,
+.nexor-viz-reset:focus-visible {
+  color: var(--nexor-text);
+}
+
+/* ---------- Result card ---------- */
+
+.nexor-result-card {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border-radius: 12px;
+  background: var(--nexor-elevated);
+  padding: 16px;
+  box-shadow: inset 2px 0 0 var(--nexor-cyan);
+}
+
+.nexor-result-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nexor-result-card-title {
+  color: var(--nexor-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.nexor-result-card-body {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.nexor-result-card-description {
+  overflow-wrap: anywhere;
+  color: #a3b0c2;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.nexor-result-card-note {
+  color: var(--nexor-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.nexor-result-card-notes {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--nexor-border) 80%, transparent);
+  padding-top: 12px;
+}
+
+.nexor-result-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.nexor-result-badge-ok { background: color-mix(in srgb, var(--nexor-green) 16%, transparent); color: #6ee7b7; }
+.nexor-result-badge-warning { background: color-mix(in srgb, var(--nexor-amber) 16%, transparent); color: #fcd34d; }
+.nexor-result-badge-neutral { background: var(--nexor-interactive); color: var(--nexor-muted); }
+.nexor-result-badge-error { background: color-mix(in srgb, var(--nexor-red) 16%, transparent); color: #fca5a5; }
+
+.nexor-result-formula-primary {
+  border-radius: 8px;
+  background: var(--nexor-bg);
+  padding: 12px 14px;
+  font-size: 17px;
+}
+
+.nexor-result-details > summary {
+  display: flex;
+  min-height: 36px;
+  cursor: pointer;
+  align-items: center;
+  color: var(--nexor-muted);
+  font-size: 13px;
+}
+
+.nexor-candidate {
+  display: grid;
+  gap: 4px;
+  border-radius: 8px;
+  background: var(--nexor-interactive);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.nexor-candidate > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nexor-candidate dt {
+  color: var(--nexor-muted);
+}
+
+.nexor-candidate dd {
+  color: var(--nexor-text);
+  font-family: var(--nexor-font-mono);
+  text-align: right;
+}
+
+/* ---------- Procedure & interpretation ---------- */
+
+
+
+
+.nexor-notes-label {
+  margin-bottom: 4px;
+  color: var(--nexor-cyan);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.nexor-notes-text {
+  color: #a3b0c2;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+
+/* ---------- Breakpoints ---------- */
+
+@media (min-width: 768px) {
+  .nexor-content {
+    padding: 24px 24px 56px;
+  }
+
+  .nexor-panel {
+    padding: 20px;
+  }
+
+  .nexor-viz-plot {
+    height: 460px;
+  }
+
+  .nexor-result-card-notes {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* The sidebar is visible from here on; the menu button only serves the drawer. */
+  .nexor-menu-button {
+    display: none;
+  }
+
+  .nexor-content,
+  .nexor-topbar {
+    margin-left: 248px;
+  }
+
+  .nexor-topbar {
+    padding: 0 24px;
+  }
+}
+
+/* Desktop: the viewer sits beside the analysis and stays in view. */
+@media (min-width: 1280px) {
+  .nexor-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "equation viz"
+      "explore viz"
+      "operation viz";
+    gap: 12px 20px;
+  }
+
+  .nexor-panel {
+    padding: 16px 18px;
+  }
+
+  .nexor-section-heading {
+    margin-bottom: 10px;
+  }
+
+  .nexor-examples {
+    margin-top: 10px;
+  }
+
+  .nexor-examples > summary {
+    min-height: 34px;
+  }
+
+  .nexor-area-viz {
+    position: sticky;
+    top: 88px;
+    align-self: start;
+  }
+
+  .nexor-area-viz-surface {
+    height: calc(100vh - 112px);
+    min-height: 460px;
+  }
+
+  .nexor-viz-plot {
+    height: auto;
+    flex: 1;
+  }
+
+  .nexor-result-card-notes {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1440px) {
+  .nexor-result-card-notes {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 1023px) {
+  .nexor-nav-item,
+  .nexor-history-item,
+  .nexor-editor-action,
+  .nexor-examples > summary,
+  .nexor-result-details > summary,
+  .nexor-layer-toggle,
+  .nexor-viz-reset {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nexor-nav-item,
+  .nexor-new-analysis,
+  .nexor-explore-card,
+  .nexor-editor-action,
+  .nexor-equation-field {
+    transition: none;
+  }
+}
