@@ -10,15 +10,20 @@ const SUBSCRIPT_ZERO = "₀";
  */
 export function parsePoint(raw: string, variables: string[]): PointParse {
   const labels = variables.map((name) => `${name}${SUBSCRIPT_ZERO}`).join(", ");
-  const parts = raw.split(/[,;]/).map((part) => part.trim());
+  // "(2, 3)" is how points are written on paper: one pair of outer parentheses is accepted.
+  const trimmed = raw.trim();
+  const unwrapped = /^\(([^()]*)\)$/.test(trimmed) ? trimmed.slice(1, -1) : trimmed;
+  const parts = unwrapped.split(/[,;]/).map((part) => part.trim());
   if (parts.length === 1 && parts[0] === "") return { ok: false, message: `Escribe el punto (${labels}).` };
   if (parts.length !== variables.length) {
+    // The comma separates coordinates, so "1,5" for 1.5 produces one value too many.
+    const decimalHint = parts.length > variables.length ? " El decimal se escribe con punto: 1.5, no 1,5." : "";
     return {
       ok: false,
       message:
-        variables.length === 1
+        (variables.length === 1
           ? `Escribe un solo valor para ${labels}.`
-          : `Escribe ${variables.length} valores separados por coma: ${labels}.`,
+          : `Escribe ${variables.length} valores separados por coma: ${labels}.`) + decimalHint,
     };
   }
   const point: Record<string, number> = {};

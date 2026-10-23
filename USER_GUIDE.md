@@ -208,7 +208,10 @@ Para una función de `x` e `y`, por ejemplo `x^2 + y^2`:
 **Derivadas parciales**
 
 1. En Explore elige **Derivadas parciales**.
-2. En **Punto de evaluación (x₀, y₀)** escribe el punto, por ejemplo `1, 1`.
+2. En **Punto de evaluación (x₀, y₀)** escribe el punto, por ejemplo `1, 1` o
+   `(1, 1)`. La coma separa las coordenadas, así que el decimal se escribe con
+   punto: `2.5, 3`. Debajo del campo verás cómo se leyó, por ejemplo «Se evalúa
+   en x₀ = 1, y₀ = 1». El punto se conserva si cambias de operación y vuelves.
 3. El resultado muestra `∂f/∂x` y `∂f/∂y` (`2x`, `2y`) y sus valores en el
    punto (`2`, `2`).
 
@@ -222,15 +225,18 @@ por ejemplo, en `x^2 y + 3y^2`, el término `3y²` tiene derivada 0 respecto de
 1. En Explore elige **Gradiente**.
 2. El resultado muestra `∇f(x,y)`, su valor `∇f(P)`, la magnitud `‖∇f(P)‖` y
    `f(P)`. Para `x^2*y + 3*y^2` en `(1, 2)`: `∇f = (2xy, x² + 6y)`,
-   `∇f(1, 2) = (4, 13)` y `‖∇f‖ ≈ 13,601471`.
+   `∇f(1, 2) = (4, 13)` y `‖∇f‖ = √185 ≈ 13,601471`. Cuando la cuenta es exacta,
+   `f(P)` y `‖∇f‖` llevan `=`; para `x^2 + y^2` en `(2, 3)` verás
+   `∇f(2, 3) = (4, 6)`, `‖∇f‖ = √52 ≈ 7,2111` y `f(2, 3) = 13`.
 
 Las fórmulas son simbólicas y los valores en el punto salen de sustituir el
 punto en ellas: con `=` si la cuenta es exacta y con `≈` si se redondeó. En el
 visor verás el punto, el plano tangente y una flecha (cono) en la dirección de
 ∇f.
 
-Si escribes mal el punto, aparece un mensaje que explica el problema y no se
-muestra ningún valor en el punto hasta que lo corrijas.
+Si escribes mal el punto, lo dejas vacío o a medio escribir (`2,`), aparece un
+mensaje que explica el problema y no se muestra ningún valor en el punto hasta
+que lo corrijas: nunca quedan valores de un punto anterior.
 
 ## 9. Integrales
 
@@ -427,7 +433,8 @@ aproximados.
 | `sin(x^2)` | Derivada | punto `1` | `f′(x) = 2·cos(x²)·x`, ≈ 1,0806046 |
 | `sin(x*y)` | Derivadas parciales | punto `1, 0` | `∂f/∂x = cos(x·y)·y`, `∂f/∂y = cos(x·y)·x`; ≈ 0 y ≈ 1 |
 | `x^2 + y^2` | Derivadas parciales | punto `1, 1` | `∂f/∂x = 2x`, `∂f/∂y = 2y`; valores `2` y `2` |
-| `x^2*y + 3*y^2` | Gradiente | punto `1, 2` | `∇f = (2xy, x² + 6y)`, `∇f(1, 2) = (4, 13)`, `‖∇f‖ ≈ 13,601471` |
+| `x^2*y + 3*y^2` | Gradiente | punto `1, 2` | `∇f = (2xy, x² + 6y)`, `∇f(1, 2) = (4, 13)`, `‖∇f‖ = √185 ≈ 13,601471` |
+| `x^2 + y^2` | Gradiente | punto `(2, 3)` | `∇f(2, 3) = (4, 6)`, `‖∇f‖ = √52 ≈ 7,2111026`, `f(2, 3) = 13` |
 | `x^2 + y^2` | Integral rectangular | `[−1,1] × [−1,1]` | ≈ 2,666875 (valor exacto 8/3) |
 | `x^2 + y^2` | Integral Tipo I | `x ∈ [−1,1]`, `x^2 ≤ y ≤ 1` | ≈ 0,837997 |
 | `x^2 + y^2` | Integral polar | `r ∈ [0,1]`, `θ ∈ [0, π/2]` | ≈ 0,39269141 (valor exacto π/8) |

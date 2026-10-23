@@ -186,7 +186,11 @@ function pendingHandler(notation: DerivativeNotation, tex: boolean) {
     const inner = node.args[0];
     if (tex) {
       const d = notation.partial ? "\\partial" : "d";
-      return `\\frac{${d}}{${d} ${notation.variable}}\\left[${inner.toTex(options)}\\right]`;
+      const body = inner.toTex(options);
+      // Stretchy brackets only around fractions; plain ones let KaTeX wrap long sums on phones.
+      return body.includes("\\frac")
+        ? `\\frac{${d}}{${d} ${notation.variable}}\\left[${body}\\right]`
+        : `\\frac{${d}}{${d} ${notation.variable}}[${body}]`;
     }
     const d = notation.partial ? "∂" : "d";
     return `${d}/${d}${notation.variable}[${inner.toString(options)}]`;

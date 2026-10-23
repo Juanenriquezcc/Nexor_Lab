@@ -349,7 +349,15 @@ regla, transformación y explicación, permite contraer el panel
 (`aria-expanded`) y recorrerlo «paso a paso» con botones o flechas del teclado.
 Las fórmulas se dibujan con KaTeX en modo en línea con `\displaystyle`, de
 modo que se parten tras `=`, `+` o `−` en pantallas estrechas en vez de
-desbordar la página.
+desbordar la página. Cada fórmula tiene un relleno vertical medido (0,3 em
+arriba y 0,5 em abajo) que absorbe el exceso de las fracciones de KaTeX: no se
+recorta ningún símbolo y las fórmulas cortas no muestran barras de
+desplazamiento. Las derivadas pendientes usan corchetes extensibles solo si
+contienen fracciones, para que las sumas largas también puedan partirse. Solo
+una expresión que no cabe ni partida (fracciones anidadas) se desplaza en
+horizontal, dentro de su propia caja; la página nunca. Por debajo de 400 px los
+márgenes de las tarjetas anidadas se reducen para dar más ancho a las
+fórmulas.
 
 El estado se muestra en una insignia con texto y símbolo, no solo con color:
 
@@ -426,11 +434,22 @@ inexistente aunque la fórmula dé un número (`ln x` en `x = −1`).
   `pi/2`), `f′(x)`, `f′(x₀)`, recta tangente y pendiente.
 - *Derivadas parciales* (`f(x,y)`): desarrollo de `∂f/∂x` y `∂f/∂y`, sus valores
   en `P`, plano tangente y significado de cada pendiente.
-- *Gradiente* (`f(x,y)`): desarrollo de ambas parciales, `∇f(x,y)`, `∇f(P)`,
-  `‖∇f(P)‖` e interpretación (dirección de máximo crecimiento, perpendicular a
-  la curva de nivel, si `f` es diferenciable en `P`).
+- *Gradiente* (`f(x,y)`): desarrollo de ambas parciales, `∇f(x,y)` como vector
+  columna, `∇f(P)`, `‖∇f(P)‖` e interpretación (dirección de máximo
+  crecimiento, perpendicular a la curva de nivel, si `f` es diferenciable en
+  `P`).
 
-Un punto mal escrito muestra un error y ningún valor en el punto. Los valores
+**Punto de evaluación.** Las coordenadas se separan con coma y el decimal se
+escribe con punto (`2.5, 3`); se admite un par de paréntesis exteriores
+(`(2, 3)`) y constantes como `pi/2`. Debajo del campo se muestra cómo se leyó
+(«Se evalúa en x₀ = 2, y₀ = 5» para `2,5`), y si sobra una coma (`1,5, 2`) el
+error sugiere el punto decimal. El texto del punto vive en el workspace, así
+que se conserva al cambiar de operación y volver. `f(P)` y `‖∇f(P)‖` se marcan
+con `=` cuando salen de aritmética racional exacta; la magnitud se da entonces
+exacta (`= √52 ≈ 7.2111026` para `x² + y²` en `(2, 3)`).
+
+Un punto mal escrito, vacío o a medio escribir muestra un error y ningún valor
+en el punto. Los valores
 de `∇f(P)` que usan el HUD y el visor salen de las derivadas simbólicas; las
 diferencias centrales (`h = 1e-5`) solo se usan, etiquetadas, cuando no hay
 forma simbólica.
@@ -705,14 +724,15 @@ el historial desde la interfaz.
 - **Framework:** Jest 30 con `ts-jest` (entorno `node`).
 - **Ubicación:** junto al código (`src/lib/*.test.ts`,
   `src/components/workspace/*.test.tsx`).
-- **Estado actual:** 9 suites, 98 tests.
+- **Estado actual:** 10 suites, 111 tests.
 
 | Suite | Tests | Cubre |
 |---|---|---|
 | `differentiation.test.ts` | 41 | Cada regla contra derivadas hechas a mano y diferencias centrales de `f`; coherencia entre pasos (la entrada de cada pasada es la salida de la anterior); comprobación de cada paso; detección de un paso falso; constantes exactas; funciones sin regla; limpieza; evaluación exacta y aproximada; puntos fuera del dominio; parciales, gradiente y una batería comparada con `math.derivative` |
 | `operation-procedures.test.ts` | 12 | Integrales rectangular (8/3), polar (π/2) y triple (8) con su error estimado; muestras sin valor real; cálculo del worker; límites estable, dependiente de la ruta y no uniforme; Lagrange con gradientes simbólicos y residuos |
 | `ProcedurePanel.test.tsx` | 11 | Render del panel: pasos numerados, tipos, comprobaciones, regla/transformación/explicación, relación, limitaciones, control de contraer, aplicaciones bajo demanda; KaTeX con MathML, texto de respaldo y escape de marcado |
-| `point.test.ts` | 8 | Puntos válidos y constantes; vacíos, número de valores incorrecto, texto, no finitos |
+| `point.test.ts` | 11 | Puntos válidos y constantes, entre paréntesis; coma como separador y aviso de punto decimal; vacíos, número de valores incorrecto, texto, no finitos |
+| `gradient-point.test.ts` | 8 | Gradiente de `x² + y²` en (0,0) y (2,3) con valores exactos y √52; mismo resultado con `(2, 3)`; cambiar el punto actualiza todos los valores sin alterar la derivación compartida; `sin(x)·cos(y)` en dos puntos; puntos vacíos, parciales e inválidos; magnitud exacta y aproximada |
 | `expression.test.ts` | 6 | Compilación, variables, funciones integradas, expresión incompleta, función usada como valor, evaluación segura |
 | `capabilities.test.ts` | 6 | Capacidades por tipo de expresión, comprobadas contra los motores |
 | `integration-run.test.ts` | 7 | Integral válida, resultados no finitos, excepciones, variable incorrecta en límites, límites invertidos |
@@ -891,7 +911,7 @@ Resultados comprobados para la versión 1.1.0:
 
 | Comprobación | Resultado |
 |---|---|
-| `npm test` | 9 suites, 98/98 tests |
+| `npm test` | 10 suites, 111/111 tests |
 | `npx tsc --noEmit` | 0 errores |
 | `npm run lint` | 0 problemas |
 | `npm run build` | Correcto |
@@ -914,7 +934,7 @@ cuántos pasos simbólicos superaron su comprobación numérica.
 | `sqrt(x)`, `x = 4` | Raíz | `1/(2√x)`; 0,25 | `1 / (2 * sqrt(x))`; ≈ 0,25 | 1/1 | Correcto |
 | `ln(x)`, `x = −1` | Punto fuera del dominio | no existe | «no existe» | 1/1 | Correcto |
 | `floor(x)` | Sin regla | sin desarrollo | «Sin desarrollo paso a paso…»; sin resultado | — | Correcto (limitación declarada) |
-| `x^2 y + 3y^2`, `(1, 2)` | Parciales y gradiente | `(2xy, x² + 6y)`; `(4, 13)`; ‖∇f‖ = √185 ≈ 13,601471 | `(2 * x * y, x ^ 2 + 6 * y)`; `= (4, 13)`; ≈ 13,601471 | 8/8 (más la definición de ∇f, que no se comprueba) | Correcto |
+| `x^2 y + 3y^2`, `(1, 2)` | Parciales y gradiente | `(2xy, x² + 6y)`; `(4, 13)`; ‖∇f‖ = √185 ≈ 13,601471 | `(2 * x * y, x ^ 2 + 6 * y)`; `= (4, 13)`; `= √185 ≈ 13,601471` | 8/8 (más la definición de ∇f, que no se comprueba) | Correcto |
 | `sin(x*y)`, `(1, 0)` | Parciales | `(y cos xy, x cos xy)`; `(0, 1)` | `cos(x * y) * y`, `cos(x * y) * x`; ≈ 0 y ≈ 1 | 8/8 | Correcto |
 | `x^2 + y^2` | Integral rectangular `[−1,1]²` | 8/3 ≈ 2,666667 | ≈ 2,666875 ± 6,25·10⁻⁴ | — | Correcto (dentro del error estimado) |
 | `x^2 + y^2` | Integral polar `r ∈ [0,1]`, `θ ∈ [0, π/2]` | π/8 ≈ 0,392699 | ≈ 0,39269141 ± 2,3·10⁻⁵ | 1/1 (cambio de variables) | Correcto |

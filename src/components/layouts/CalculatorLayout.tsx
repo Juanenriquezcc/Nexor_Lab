@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { AppShell } from "./AppShell";
 import { FunctionInput } from "../FunctionInput";
 import { FunctionsTable } from "../FunctionsTable";
-import DerivativesCalculator from "../derivatives-calculator";
+import DerivativesCalculator, { type PointInputs } from "../derivatives-calculator";
 import OptimizationCalculator from "../optimization-calculator";
 import type { Candidate } from "../../lib/lagrange-solver";
 import IntegrationCalculator from "../integration-calculator";
@@ -65,6 +65,8 @@ export function CalculatorLayout() {
   const updateFunctionExpression = (expression: string) => setFunctionExpr(normalizeExpression(expression));
   // Each tool owns its point: derivatives evaluate at one, limits approach another.
   const [derivativePoint, setDerivativePoint] = useState<Point | null>(null);
+  // The typed point lives here so it survives switching to another operation and back.
+  const [derivativePointInputs, setDerivativePointInputs] = useState<PointInputs>({ one: "0", two: "0,0" });
   const [limitPoint, setLimitPoint] = useState<Point | null>(null);
   const [optPoints, setOptPoints] = useState<Candidate[]>([]);
   const [regionRect, setRegionRect] = useState<RegionRect | null>(null);
@@ -266,6 +268,8 @@ export function CalculatorLayout() {
               {tool === "derivatives" && (
                 <DerivativesCalculator
                   expression={expression}
+                  pointInputs={derivativePointInputs}
+                  onPointInputsChange={setDerivativePointInputs}
                   requestedCapability={derivativeMode}
                   onPointChange={setDerivativePoint}
                   onGradientChange={handleGradientChange}

@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect, useDeferredValue } from "react";
+import { useMemo, useEffect, useDeferredValue } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { gradientAt } from "../lib/derivatives";
 import { analyzeDomainAndRange } from "../lib/domain-range";
-import { buildDerivativeReport, deriveExpression, type DerivativeMode } from "../lib/derivative-procedure";
+import { buildDerivativeReport, deriveExpression, gradientVectorTex, type DerivativeMode } from "../lib/derivative-procedure";
 import { safeEvaluate, type CompiledExpression } from "../lib/expression";
 import { parsePoint } from "../lib/point";
 import { formatNumber, numberTex, type MathText } from "../lib/procedure";
@@ -11,9 +11,15 @@ import { ResultCard, ResultFormula, ResultValues, type ResultTone } from "./work
 import { MathFormula } from "./workspace/MathFormula";
 import { ProcedurePanel } from "./workspace/ProcedurePanel";
 
+/** Text of the evaluation point, one per dimension, so f(x) and f(x,y) each keep theirs. */
+export type PointInputs = { one: string; two: string };
+
 interface Props {
   /** The validated working equation; this module never edits it. */
   expression: CompiledExpression;
+  /** Owned by the workspace: the point survives switching to another operation and back. */
+  pointInputs: PointInputs;
+  onPointInputsChange: (inputs: PointInputs) => void;
   requestedCapability?: "derivative" | "partialDerivative" | "gradient";
   onPointChange?: (p: { x: number; y: number } | null) => void;
   onGradientChange?: (gradient: { dfdx: number; dfdy: number; mag: number } | null) => void;
@@ -30,6 +36,8 @@ const lhsTex = (variable: string, mode: DerivativeMode) =>
 
 export default function DerivativesCalculator({
   expression: currentExpression,
+  pointInputs,
+  onPointInputsChange,
   requestedCapability = "gradient",
   onPointChange,
   onGradientChange,
@@ -41,9 +49,7 @@ export default function DerivativesCalculator({
   const variables = expression.variables;
   const oneVariable = variables.length === 1;
   const mode: DerivativeMode = oneVariable ? "derivative" : requestedCapability === "gradient" ? "gradient" : "partialDerivative";
-  // One input per dimension, so switching between f(x) and f(x,y) keeps each point.
-  const [rawPoints, setRawPoints] = useState({ one: "0", two: "0,0" });
-  const rawPoint = oneVariable ? rawPoints.one : rawPoints.two;
+  const rawPoint = oneVariable ? pointInputs.one : pointInputs.two;
   const parsed = useMemo(() => parsePoint(rawPoint, variables), [rawPoint, variables]);
   const point = parsed.ok ? parsed.point : null;
 
@@ -103,15 +109,29 @@ export default function DerivativesCalculator({
         values.push({ label, value: "—" });
       }
     }
-    if (mode === "gradient") values.push({ label: "‖∇f(P)‖", value: finiteGradient ? `≈ ${formatNumber(finiteGradient.mag)}` : "—" });
-    values.push({ label: `f(${where})`, value: Number.isFinite(report.valueOfF) ? `≈ ${formatNumber(report.valueOfF)}` : "sin valor real" });
+    if (mode === "gradient") {
+      // Exact (√S) when every component is an exact rational; central differences are always approximate.
+      const magnitude =
+        finiteGradient && !finiteGradient.numeric && report.magnitude
+          ? report.magnitude.display.text
+          : finiteGradient
+            ? `≈ ${formatNumber(finiteGradient.mag)}`
+            : "—";
+      values.push({ label: "‖∇f(P)‖", value: magnitude });
+    }
+    values.push({
+      label: `f(${where})`,
+      value: Number.isFinite(report.valueOfF) ? `${approx(report.valueOfFExact)} ${formatNumber(report.valueOfF)}` : "sin valor real",
+    });
   }
 
+  const gradientExact = Boolean(finiteGradient && !finiteGradient.numeric && report.derivatives.every((entry) => entry.exactAtPoint));
   const gradientTex: MathText | null =
     mode === "gradient" && report.derivatives.every((entry) => entry.display)
       ? {
           text: `∇f = (${report.derivatives.map((entry) => entry.display?.text).join(", ")})`,
-          tex: `\\nabla f(x,y) = \\left(${report.derivatives.map((entry) => entry.display?.tex).join(",\\ ")}\\right)`,
+          // Column vector: the usual notation, and narrow enough for phones.
+          tex: gradientVectorTex(variables, report.derivatives.map((entry) => entry.display as MathText)),
         }
       : null;
 
@@ -125,7 +145,7 @@ export default function DerivativesCalculator({
             value={rawPoint}
             onChange={(e) => {
               const value = e.target.value;
-              setRawPoints((current) => (oneVariable ? { ...current, one: value } : { ...current, two: value }));
+              onPointInputsChange(oneVariable ? { ...pointInputs, one: value } : { ...pointInputs, two: value });
             }}
             placeholder={oneVariable ? "Ej: 1" : "Ej: 1, 2"}
             aria-invalid={!parsed.ok}
@@ -136,9 +156,15 @@ export default function DerivativesCalculator({
             {parsed.ok
               ? oneVariable
                 ? "Un número o una constante (pi/2, sqrt(2)…), con punto decimal. La derivada simbólica no depende del punto."
-                : "Dos valores separados por coma, con punto decimal; admiten constantes como pi/2."
+                : "Dos valores separados por coma, con punto decimal (2.5); admite (x₀, y₀) entre paréntesis y constantes como pi/2."
               : `${parsed.message} No se muestran valores en el punto hasta corregirlo.`}
           </p>
+          {point && (
+            // How the text was read: "2,5" is the point (2, 5), not 2.5.
+            <p className="nexor-point-reading" aria-live="polite">
+              Se evalúa en {variables.map((name) => `${name}₀ = ${formatNumber(point[name], 10)}`).join(", ")}
+            </p>
+          )}
         </div>
       </div>
 
@@ -171,8 +197,8 @@ export default function DerivativesCalculator({
           {mode === "gradient" && finiteGradient && point && (
             <MathFormula
               math={{
-                text: `∇f(${where}) ≈ (${formatNumber(finiteGradient.dfdx)}, ${formatNumber(finiteGradient.dfdy)})`,
-                tex: `\\nabla f(${where}) ${!finiteGradient.numeric && report.derivatives.every((entry) => entry.exactAtPoint) ? "=" : "\\approx"} \\left(${numberTex(finiteGradient.dfdx)},\\ ${numberTex(finiteGradient.dfdy)}\\right)`,
+                text: `∇f(${where}) ${gradientExact ? "=" : "≈"} (${formatNumber(finiteGradient.dfdx)}, ${formatNumber(finiteGradient.dfdy)})`,
+                tex: `\\nabla f(${where}) ${gradientExact ? "=" : "\\approx"} \\left(${numberTex(finiteGradient.dfdx)},\\ ${numberTex(finiteGradient.dfdy)}\\right)`,
               }}
               display
             />

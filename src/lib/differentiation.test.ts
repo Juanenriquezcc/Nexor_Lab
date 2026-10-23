@@ -206,7 +206,8 @@ describe("analyzeDerivatives", () => {
     expect(report.procedure.steps[gradientIndex].after?.text).toBe("∇f(x,y) = (2 * x * y, x ^ 2 + 6 * y)");
     const magnitude = report.procedure.steps.find((step) => step.title === "Gradiente y magnitud en el punto");
     expect(magnitude?.after?.text).toBe("∇f(1, 2) = (4, 13)");
-    expect(magnitude?.values?.[0].value).toBe(`≈ ${Number(Math.sqrt(185).toPrecision(8))}`);
+    // 4² + 13² = 185 is exact, so the magnitude is given as √185 and its value.
+    expect(magnitude?.values?.[0].value).toBe(`= √185 ≈ ${Number(Math.sqrt(185).toPrecision(8))}`);
   });
 
   it("the last symbolic step of each group is the reported derivative", () => {

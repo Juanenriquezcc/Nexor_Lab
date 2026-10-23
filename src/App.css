@@ -798,16 +798,35 @@
   color: var(--nexor-text);
 }
 
-.nexor-math-display {
+/* KaTeX draws fractions and exponents slightly outside its line box: the vertical
+   padding keeps them inside the scroll container, so nothing is clipped and short
+   formulas never get a scrollbar. Only a formula wider than its card scrolls, alone. */
+.nexor-math-display,
+.nexor-step-rule .nexor-math {
   display: block;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 2px 0;
+  /* Measured: 0.5em at the bottom absorbs the struts of \frac in display style. */
+  padding: 0.3em 0 0.5em;
+  scrollbar-width: thin;
+  scrollbar-color: var(--nexor-border) transparent;
 }
 
-.nexor-math-display .katex {
+/* Long formulas wrap after a top-level =, + or − when the width runs out. */
+.nexor-math .katex {
   white-space: normal;
+}
+
+.nexor-result-formula > * {
+  min-width: 0;
+}
+
+.nexor-point-reading {
+  margin-top: 4px;
+  color: var(--nexor-cyan);
+  font-family: var(--nexor-font-mono);
+  font-size: 12px;
 }
 
 @media (max-width: 480px) {
@@ -1012,7 +1031,6 @@
   display: grid;
   min-width: 0;
   gap: 4px;
-  overflow-x: auto;
   border: 1px dashed color-mix(in srgb, var(--nexor-purple) 45%, transparent);
   border-radius: 8px;
   padding: 8px 10px;
@@ -1282,6 +1300,29 @@
   .nexor-step-nav button,
   .nexor-step-apps > summary {
     min-height: 44px;
+  }
+}
+
+/* Narrow phones: nested cards each kept 12–16px of padding, which left formulas about
+   170px at 320px wide. Tighter insets give them ~40px more without shrinking the type. */
+@media (max-width: 400px) {
+  .nexor-content {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .nexor-panel,
+  .nexor-procedure,
+  .nexor-result-card {
+    padding: 12px;
+  }
+
+  .nexor-step {
+    padding: 10px;
+  }
+
+  .nexor-step-math {
+    padding: 8px 10px;
   }
 }
 

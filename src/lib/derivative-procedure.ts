@@ -1,4 +1,4 @@
-import type { MathNode } from "mathjs";
+import type { Fraction, MathNode } from "mathjs";
 import { math, type CompiledExpression } from "./expression";
 import {
   checkEquivalent,
@@ -38,6 +38,16 @@ export interface VariableDerivative {
   /** Value at the requested point (NaN when not real there). */
   valueAtPoint?: number;
   exactAtPoint?: boolean;
+  /** Exact rational value at the point, when the substitution allows it. */
+  exactValue?: Fraction | null;
+}
+
+/** ‖∇f(P)‖: exact (√S with S rational) when every component is an exact rational. */
+export interface GradientMagnitude {
+  value: number;
+  /** The displayed form is exact (an integer, a fraction or √S). */
+  exact: boolean;
+  display: MathText;
 }
 
 export interface DerivativeReport {
@@ -45,6 +55,10 @@ export interface DerivativeReport {
   derivatives: VariableDerivative[];
   /** f at the point; NaN without a point or where f is not real. */
   valueOfF: number;
+  /** f(P) comes from exact rational arithmetic. */
+  valueOfFExact: boolean;
+  /** Gradient mode with a point where every component is real. */
+  magnitude?: GradientMagnitude;
   /** No symbolic step failed its numerical check. */
   verified: boolean;
 }
@@ -103,6 +117,7 @@ export interface Evaluation {
   value: number;
   /** The value comes from exact rational arithmetic. */
   exact: boolean;
+  fraction: Fraction | null;
   display: MathText;
 }
 
@@ -116,6 +131,7 @@ export function evaluateAtPoint(node: MathNode, point: Point): Evaluation {
       substituted,
       value: Number(exact),
       exact: true,
+      fraction: exact,
       display: { text, tex: Number(exact.d) === 1 ? text : exact.toLatex() },
     };
   }
@@ -124,9 +140,45 @@ export function evaluateAtPoint(node: MathNode, point: Point): Evaluation {
     substituted,
     value,
     exact: false,
+    fraction: null,
     display: Number.isFinite(value)
       ? { text: formatNumber(value), tex: numberTex(value) }
       : { text: "sin valor real", tex: "\\text{sin valor real}" },
+  };
+}
+
+const integerSqrt = (n: number) => {
+  const root = Math.round(Math.sqrt(n));
+  return Number.isSafeInteger(n) && root * root === n ? root : null;
+};
+
+/** Magnitude of a gradient; exact as √S when every component is an exact rational. */
+export function gradientMagnitude(components: Array<{ value: number; fraction?: Fraction | null }>): GradientMagnitude {
+  const value = Math.hypot(...components.map((component) => component.value));
+  const approximate = { value, exact: false, display: { text: `≈ ${formatNumber(value)}`, tex: `\\approx ${numberTex(value)}` } };
+  if (!components.every((component) => component.fraction)) return approximate;
+  const sum = components.reduce(
+    (acc, component) => math.add(acc, math.multiply(component.fraction as Fraction, component.fraction as Fraction)) as Fraction,
+    math.fraction(0) as Fraction,
+  );
+  const n = Number(sum.n);
+  const d = Number(sum.d);
+  const rootN = integerSqrt(n);
+  const rootD = integerSqrt(d);
+  if (rootN !== null && rootD !== null) {
+    const text = rootD === 1 ? String(rootN) : `${rootN}/${rootD}`;
+    const tex = rootD === 1 ? String(rootN) : `\\frac{${rootN}}{${rootD}}`;
+    return { value, exact: true, display: { text: `= ${text}`, tex: `= ${tex}` } };
+  }
+  if (!Number.isSafeInteger(n) || !Number.isSafeInteger(d)) return approximate;
+  const radicand = d === 1 ? { text: String(n), tex: String(n) } : { text: `(${n}/${d})`, tex: `\\tfrac{${n}}{${d}}` };
+  return {
+    value,
+    exact: true,
+    display: {
+      text: `= √${radicand.text} ≈ ${formatNumber(value)}`,
+      tex: `= \\sqrt{${radicand.tex}} \\approx ${numberTex(value)}`,
+    },
   };
 }
 
@@ -329,13 +381,19 @@ export function deriveExpression(expression: CompiledExpression, mode: Derivativ
       ],
       after: {
         text: `∇f(${variables.join(",")}) = (${components.map((c) => c.text).join(", ")})`,
-        tex: `\\nabla f(${variables.join(",")}) = \\left(${components.map((c) => c.tex).join(",\\ ")}\\right)`,
+        // Column vector: the usual notation, and narrow enough for phones.
+        tex: gradientVectorTex(variables, components),
       },
       relation: "=",
       explanation: "El gradiente reúne las derivadas parciales obtenidas arriba.",
     });
   }
   return { expression, mode, variables, steps: derivationDrafts, derivatives, domains: [...domains], limitations };
+}
+
+/** ∇f(x,y) = (∂f/∂x, ∂f/∂y) written as a column vector. */
+export function gradientVectorTex(variables: string[], components: MathText[]): string {
+  return `\\nabla f(${variables.join(",")}) = \\begin{pmatrix} ${components.map((c) => c.tex).join(" \\\\ ")} \\end{pmatrix}`;
 }
 
 /** Adds the evaluation at the point and the interpretation to a symbolic derivation. */
@@ -349,8 +407,12 @@ export function buildDerivativeReport(derived: DerivedExpression, point: Point |
 
   // ---- evaluation at the point: separate from the symbolic development ----
   let valueOfF = NaN;
+  let valueOfFExact = false;
+  let magnitude: GradientMagnitude | undefined;
   if (point) {
-    valueOfF = safeNumber(expression.node, point);
+    const fAtPoint = evaluateAtPoint(expression.node, point);
+    valueOfF = fAtPoint.value;
+    valueOfFExact = fAtPoint.exact;
     const where = pointLabel(point, expression.variables);
     if (!Number.isFinite(valueOfF)) {
       limitations.push(`f no toma un valor real en ${where}.`);
@@ -368,7 +430,7 @@ export function buildDerivativeReport(derived: DerivedExpression, point: Point |
           kind: "evaluation",
           group: "Evaluación en el punto",
           title: `${group} en ${where}`,
-          after: { text: "no existe", tex: "	ext{no existe}" },
+          after: { text: "no existe", tex: "\\text{no existe}" },
           explanation: `f no está definida en ${where}, así que ${group} no existe ahí, aunque la fórmula obtenida dé un número al sustituir.`,
         });
         continue;
@@ -376,6 +438,7 @@ export function buildDerivativeReport(derived: DerivedExpression, point: Point |
       const evaluation = evaluateAtPoint(entry.node, point);
       entry.valueAtPoint = evaluation.value;
       entry.exactAtPoint = evaluation.exact;
+      entry.exactValue = evaluation.fraction;
       evaluationDrafts.push({
         kind: "evaluation",
         group: "Evaluación en el punto",
@@ -393,11 +456,8 @@ export function buildDerivativeReport(derived: DerivedExpression, point: Point |
 
     const values = derivatives.map((entry) => entry.valueAtPoint ?? NaN);
     if (mode === "gradient" && values.every(Number.isFinite)) {
-      const magnitude = Math.hypot(...values);
+      magnitude = gradientMagnitude(derivatives.map((entry) => ({ value: entry.valueAtPoint ?? NaN, fraction: entry.exactValue })));
       const allExact = derivatives.every((entry) => entry.exactAtPoint);
-      // "=" only when an integer magnitude squares back exactly to the sum of squares.
-      const exactMagnitude =
-        allExact && Number.isInteger(magnitude) && magnitude * magnitude === values.reduce((sum, v) => sum + v * v, 0);
       const at = variables.map((name) => formatNumber(point[name], 10)).join(", ");
       evaluationDrafts.push({
         kind: "evaluation",
@@ -408,11 +468,13 @@ export function buildDerivativeReport(derived: DerivedExpression, point: Point |
           tex: `\\nabla f(${at}) = \\left(${values.map((v) => numberTex(v)).join(",\\ ")}\\right)`,
         },
         relation: allExact ? "=" : "≈",
-        values: [{ label: "‖∇f(P)‖ = √(suma de cuadrados)", value: `${exactMagnitude ? "=" : "≈"} ${formatNumber(magnitude)}` }],
-        explanation: "La magnitud es la raíz de la suma de los cuadrados de las componentes, calculada en coma flotante.",
+        values: [{ label: "‖∇f(P)‖ = √(suma de cuadrados)", value: magnitude.display.text }],
+        explanation: magnitude.exact
+          ? "La magnitud es la raíz de la suma de los cuadrados de las componentes; como son racionales exactas, la raíz se da exacta y, si no es racional, también su valor aproximado."
+          : "La magnitud es la raíz de la suma de los cuadrados de las componentes, calculada en coma flotante.",
       });
     }
-    const interpretation = interpret(mode, derivatives, point, valueOfF, variables);
+    const interpretation = interpret(mode, derivatives, point, valueOfF, valueOfFExact, variables);
     if (interpretation) evaluationDrafts.push(interpretation);
   }
 
@@ -437,6 +499,8 @@ export function buildDerivativeReport(derived: DerivedExpression, point: Point |
     procedure: { title, steps: numberSteps(mode, drafts), limitations },
     derivatives,
     valueOfF,
+    valueOfFExact,
+    magnitude,
     verified: drafts.every((step) => step.check !== "failed"),
   };
 }
@@ -450,12 +514,14 @@ function interpret(
   derivatives: VariableDerivative[],
   point: Point,
   valueOfF: number,
+  valueOfFExact: boolean,
   variables: string[],
 ): Draft | null {
   const values = derivatives.map((entry) => entry.valueAtPoint ?? NaN);
   if (!values.every(Number.isFinite) || !Number.isFinite(valueOfF)) return null;
   const exact = derivatives.every((entry) => entry.exactAtPoint);
-  const approx = exact ? "=" : "≈";
+  // Tangent line / plane: exact only if f(P) and every slope are.
+  const approx = exact && valueOfFExact ? "=" : "≈";
 
   if (mode === "derivative") {
     const [slope] = values;
