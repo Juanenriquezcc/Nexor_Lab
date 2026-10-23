@@ -57,7 +57,10 @@ Distribución de la pantalla:
 - **Barra superior:** la función actual (por ejemplo, `f(x,y) = x^2 + y^2 ·
   ℝ² → ℝ`) y el botón **Nuevo análisis**, que lleva el cursor al editor.
 - **Barra lateral** (en pantallas pequeñas, con el botón ☰): navegación e
-  historial reciente.
+  historial reciente. En el móvil, el botón ☰ sigue visible al desplazarte y
+  el menú se abre bajo la barra superior sin mover la página. Ciérralo con el
+  mismo botón, con la tecla Escape, tocando fuera del menú o eligiendo una
+  opción. Tu ecuación y tu análisis no cambian al abrirlo o cerrarlo.
 - **Área principal:** ecuación, Explore y operación; en pantallas anchas, el
   visor 3D queda fijo a la derecha.
 

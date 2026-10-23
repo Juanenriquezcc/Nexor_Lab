@@ -5,6 +5,8 @@
 /* ---------- Shell ---------- */
 
 .nexor-shell {
+  /* The mobile drawer and its backdrop start right below the topbar. */
+  --nexor-topbar-height: 64px;
   min-height: 100vh;
   background: var(--nexor-bg);
   color: var(--nexor-text);
@@ -25,7 +27,7 @@
   top: 0;
   z-index: 10;
   display: flex;
-  height: 64px;
+  height: var(--nexor-topbar-height);
   align-items: center;
   gap: 12px;
   background: color-mix(in srgb, var(--nexor-bg) 90%, transparent);
@@ -35,14 +37,40 @@
 }
 
 .nexor-content {
+  /* Own stacking context: the viewer's overlays (Plotly's toolbar uses z-index 1001)
+     cannot paint over the topbar or the mobile drawer. */
+  isolation: isolate;
   min-width: 0;
   padding: 16px 16px 48px;
 }
 
+/* Mobile drawer: anchored under the sticky topbar, outside the document flow, so it
+   opens in view at any scroll position and never pushes the page. */
 .nexor-mobile-nav {
+  position: fixed;
+  top: var(--nexor-topbar-height);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  max-height: calc(100vh - var(--nexor-topbar-height));
+  max-height: calc(100dvh - var(--nexor-topbar-height));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-bottom: 1px solid var(--nexor-border);
   background: var(--nexor-bg);
   padding: 16px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+}
+
+.nexor-mobile-nav[hidden] {
+  display: none;
+}
+
+.nexor-mobile-backdrop {
+  position: fixed;
+  inset: var(--nexor-topbar-height) 0 0 0;
+  z-index: 25;
+  background: rgba(5, 7, 12, 0.6);
 }
 
 .nexor-eyebrow {

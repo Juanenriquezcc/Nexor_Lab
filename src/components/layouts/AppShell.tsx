@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   BookOpen,
   Clock3,
@@ -116,19 +116,48 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobilePanelRef = useRef<HTMLDivElement>(null);
+
+  /** Closes the drawer and hands focus back to its button without scrolling the page. */
+  const closeMobileNavigation = useCallback(() => {
+    setMobileNavigationOpen(false);
+    menuButtonRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    if (!mobileNavigationOpen) return;
+    // The drawer is fixed under the topbar, so focusing inside it never moves the document.
+    mobilePanelRef.current?.querySelector<HTMLButtonElement>("button:not([disabled])")?.focus({ preventScroll: true });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMobileNavigation();
+    };
+    // From the desktop breakpoint on, the sidebar replaces the drawer.
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onBreakpoint = () => {
+      if (desktop.matches) setMobileNavigationOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    desktop.addEventListener("change", onBreakpoint);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      desktop.removeEventListener("change", onBreakpoint);
+    };
+  }, [mobileNavigationOpen, closeMobileNavigation]);
 
   const handleNavigate = (item: NavigationItem) => {
     if (item.id === "workspace") {
-      setMobileNavigationOpen(false);
+      if (mobileNavigationOpen) closeMobileNavigation();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
     if (item.id === "history") {
+      // On phones the history list lives inside the drawer: it stays open and the list takes focus.
       document.getElementById(mobileNavigationOpen ? "nexor-history-mobile" : "nexor-history")?.focus();
     }
   };
 
   const pickExpression = (expression: string) => {
-    setMobileNavigationOpen(false);
+    if (mobileNavigationOpen) closeMobileNavigation();
     onUseExpression(expression);
   };
 
@@ -147,27 +176,42 @@ export function AppShell({
       <div className="min-w-0 flex-1">
         <header className="nexor-topbar">
           <button
+            ref={menuButtonRef}
             type="button"
             className="nexor-icon-button nexor-menu-button"
             aria-label={mobileNavigationOpen ? "Cerrar navegación" : "Abrir navegación"}
             aria-expanded={mobileNavigationOpen}
-            onClick={() => setMobileNavigationOpen((open) => !open)}
+            aria-controls="nexor-mobile-navigation"
+            onClick={() => (mobileNavigationOpen ? closeMobileNavigation() : setMobileNavigationOpen(true))}
           >
             {mobileNavigationOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </button>
           <div className="min-w-0 flex-1">{context}</div>
-          <button type="button" className="nexor-new-analysis" onClick={onNewAnalysis} aria-label="Nuevo análisis">
+          <button
+            type="button"
+            className="nexor-new-analysis"
+            onClick={() => {
+              setMobileNavigationOpen(false);
+              onNewAnalysis();
+            }}
+            aria-label="Nuevo análisis"
+          >
             <Plus aria-hidden="true" className="h-4 w-4" />
             <span className="hidden sm:inline">Nuevo análisis</span>
           </button>
         </header>
 
-        {mobileNavigationOpen && (
-          <div className="nexor-mobile-nav lg:hidden">
-            <div className="mb-5"><Brand /></div>
-            <Navigation historyId="nexor-history-mobile" history={history} onNavigate={handleNavigate} onUseExpression={pickExpression} />
-          </div>
-        )}
+        {/* Fixed under the topbar, outside the document flow: opening it never shifts or scrolls the page. */}
+        {mobileNavigationOpen && <div className="nexor-mobile-backdrop lg:hidden" aria-hidden="true" onClick={closeMobileNavigation} />}
+        <div
+          id="nexor-mobile-navigation"
+          ref={mobilePanelRef}
+          className="nexor-mobile-nav lg:hidden"
+          hidden={!mobileNavigationOpen}
+        >
+          <div className="mb-5"><Brand /></div>
+          <Navigation historyId="nexor-history-mobile" history={history} onNavigate={handleNavigate} onUseExpression={pickExpression} />
+        </div>
 
         <main id="nexor-workspace" className="nexor-content">
           {children}

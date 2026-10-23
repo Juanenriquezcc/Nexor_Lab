@@ -653,6 +653,20 @@ navegación móvil. En la navegación, *Workspace* e *Historial* están
 disponibles; *Proyectos*, *Favoritos* y *Ajustes* aparecen deshabilitados como
 «Próximamente».
 
+**Navegación móvil (por debajo de 1024 px).** El botón ☰ de la barra superior
+(fija al hacer scroll) abre un panel `position: fixed` anclado bajo la barra,
+fuera del flujo del documento: se abre visible en cualquier posición de scroll
+sin desplazar la página, y si no cabe tiene su propio scroll interno. El botón
+expone `aria-expanded` y `aria-controls`; al abrir, el foco pasa al primer
+elemento del panel. Se cierra con el mismo botón, con Escape (el foco vuelve
+al botón), tocando el fondo oscurecido, eligiendo *Workspace* o una expresión
+del historial, con *Nuevo análisis* o al ensanchar la ventana hasta el diseño
+de escritorio. *Historial* mantiene el panel abierto y enfoca su lista, porque
+en móvil el historial está dentro del panel. Abrir o cerrar el menú no cambia
+la ecuación ni el análisis. `<main>` crea su propio contexto de apilamiento
+(`isolation: isolate`) para que los controles de Plotly no se dibujen encima
+de la barra ni del panel.
+
 ## 16. Historial y persistencia
 
 Todo se guarda en el `localStorage` del navegador. No hay sincronización ni
@@ -691,7 +705,7 @@ el historial desde la interfaz.
 - **Framework:** Jest 30 con `ts-jest` (entorno `node`).
 - **Ubicación:** junto al código (`src/lib/*.test.ts`,
   `src/components/workspace/*.test.tsx`).
-- **Estado actual:** 8 suites, 95 tests.
+- **Estado actual:** 9 suites, 98 tests.
 
 | Suite | Tests | Cubre |
 |---|---|---|
@@ -703,6 +717,7 @@ el historial desde la interfaz.
 | `capabilities.test.ts` | 6 | Capacidades por tipo de expresión, comprobadas contra los motores |
 | `integration-run.test.ts` | 7 | Integral válida, resultados no finitos, excepciones, variable incorrecta en límites, límites invertidos |
 | `lagrange-solver.test.ts` | 4 | Candidatos de `xy` sobre un círculo, clasificación restringida, caso lineal, caso degenerado |
+| `AppShell.test.tsx` | 3 | Menú móvil: `aria-controls` apunta al panel, el panel cerrado está oculto (no desmontado) y fuera de `<main>` |
 
 Los resultados esperados vienen de derivaciones e integrales hechas a mano,
 identidades conocidas y diferencias centrales de `f`; mathjs se usa solo como
@@ -876,7 +891,7 @@ Resultados comprobados para la versión 1.1.0:
 
 | Comprobación | Resultado |
 |---|---|
-| `npm test` | 8 suites, 95/95 tests |
+| `npm test` | 9 suites, 98/98 tests |
 | `npx tsc --noEmit` | 0 errores |
 | `npm run lint` | 0 problemas |
 | `npm run build` | Correcto |
