@@ -13,7 +13,8 @@ const toneSymbol: Record<ResultTone, string> = {
 
 /**
  * Presentation of a result an operation already computed. It never computes:
- * each operation decides which real values fill the body.
+ * each operation decides which real values fill the body. The development
+ * that leads to it is shown by ProcedurePanel.
  */
 export function ResultCard({
   title,
@@ -21,8 +22,6 @@ export function ResultCard({
   children,
   description,
   note,
-  procedure,
-  interpretation,
 }: {
   title: string;
   status?: { label: string; tone: ResultTone };
@@ -30,8 +29,6 @@ export function ResultCard({
   children: ReactNode;
   description?: ReactNode;
   note?: ReactNode;
-  procedure?: ReactNode;
-  interpretation?: ReactNode;
 }) {
   return (
     <section className="nexor-result-card" aria-label={`Resultado: ${title}`} aria-live="polite">
@@ -48,22 +45,6 @@ export function ResultCard({
       {description && <p className="nexor-result-card-description">{description}</p>}
       <div className="nexor-result-card-body">{children}</div>
       {note && <p className="nexor-result-card-note">{note}</p>}
-      {(procedure || interpretation) && (
-        <div className="nexor-result-card-notes">
-          {procedure && (
-            <div>
-              <p className="nexor-notes-label">Procedimiento</p>
-              <div className="nexor-notes-text">{procedure}</div>
-            </div>
-          )}
-          {interpretation && (
-            <div>
-              <p className="nexor-notes-label">Interpretación</p>
-              <div className="nexor-notes-text">{interpretation}</div>
-            </div>
-          )}
-        </div>
-      )}
     </section>
   );
 }

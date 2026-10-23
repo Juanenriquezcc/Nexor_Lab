@@ -643,6 +643,24 @@
   color: var(--nexor-text);
 }
 
+/* Shown while the surface still belongs to the previous equation. */
+.nexor-viz-updating {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--nexor-panel) 90%, transparent);
+  padding: 4px 10px;
+  color: var(--nexor-amber);
+  font-size: 12px;
+}
+
+.nexor-module[aria-busy="true"] {
+  opacity: 0.7;
+  transition: opacity 120ms ease;
+}
+
 /* ---------- Result card ---------- */
 
 .nexor-result-card {
@@ -686,13 +704,6 @@
   color: var(--nexor-muted);
   font-size: 12px;
   line-height: 1.5;
-}
-
-.nexor-result-card-notes {
-  display: grid;
-  gap: 12px;
-  border-top: 1px solid color-mix(in srgb, var(--nexor-border) 80%, transparent);
-  padding-top: 12px;
 }
 
 .nexor-result-badge {
@@ -753,8 +764,396 @@
 
 /* ---------- Procedure & interpretation ---------- */
 
+/* Formulas never widen the page: long ones scroll inside their own box. */
+.nexor-math {
+  max-width: 100%;
+  color: var(--nexor-text);
+}
 
+.nexor-math-display {
+  display: block;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
 
+.nexor-math-display .katex {
+  white-space: normal;
+}
+
+@media (max-width: 480px) {
+  .nexor-math .katex {
+    font-size: 1.08em;
+  }
+}
+
+.nexor-math-fallback {
+  font-family: var(--nexor-font-mono);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.nexor-procedure {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  border-radius: 12px;
+  background: var(--nexor-panel);
+  padding: 16px;
+  box-shadow: inset 0 0 0 1px var(--nexor-border);
+}
+
+.nexor-procedure-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nexor-procedure-title {
+  color: var(--nexor-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.nexor-procedure-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nexor-segmented {
+  display: inline-flex;
+  border-radius: 8px;
+  background: var(--nexor-bg);
+  padding: 2px;
+}
+
+.nexor-segmented button,
+.nexor-procedure-toggle,
+.nexor-step-nav button {
+  min-height: 32px;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: var(--nexor-muted);
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.nexor-segmented button[aria-pressed="true"] {
+  background: var(--nexor-interactive);
+  color: var(--nexor-text);
+}
+
+.nexor-procedure-toggle,
+.nexor-step-nav button {
+  background: var(--nexor-interactive);
+  color: var(--nexor-text);
+}
+
+.nexor-segmented button:hover {
+  color: var(--nexor-text);
+}
+
+.nexor-step-nav button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.nexor-procedure-body {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.nexor-procedure-body[hidden] {
+  display: none;
+}
+
+.nexor-step-group {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.nexor-step-group-title {
+  color: var(--nexor-cyan);
+  font-family: var(--nexor-font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.nexor-steps {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nexor-steps > li {
+  min-width: 0;
+}
+
+.nexor-step {
+  --step-accent: var(--nexor-muted);
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border-radius: 10px;
+  background: var(--nexor-elevated);
+  padding: 12px 14px;
+  box-shadow: inset 2px 0 0 var(--step-accent);
+}
+
+.nexor-step-symbolic { --step-accent: var(--nexor-cyan); }
+.nexor-step-evaluation { --step-accent: var(--nexor-blue); }
+.nexor-step-approximation { --step-accent: var(--nexor-amber); }
+.nexor-step-interpretation { --step-accent: var(--nexor-purple); }
+
+.nexor-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.nexor-step-number {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--nexor-interactive);
+  color: var(--nexor-text);
+  font-family: var(--nexor-font-mono);
+  font-size: 12px;
+}
+
+.nexor-step-heading {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 180px;
+  gap: 2px;
+}
+
+.nexor-step-kind {
+  color: var(--step-accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nexor-step-title {
+  color: var(--nexor-text);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.nexor-step-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.nexor-step-check-verified { background: color-mix(in srgb, var(--nexor-green) 14%, transparent); color: #6ee7b7; }
+.nexor-step-check-unverifiable { background: color-mix(in srgb, var(--nexor-amber) 14%, transparent); color: #fcd34d; }
+.nexor-step-check-failed { background: color-mix(in srgb, var(--nexor-red) 16%, transparent); color: #fca5a5; }
+
+.nexor-step-rules {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.nexor-step-rule {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  overflow-x: auto;
+  border: 1px dashed color-mix(in srgb, var(--nexor-purple) 45%, transparent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.nexor-step-rule-name {
+  color: #c4b5fd;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.nexor-step-math {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  margin: 0;
+  border-radius: 8px;
+  background: var(--nexor-bg);
+  padding: 10px 12px;
+}
+
+.nexor-step-math > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.nexor-step-math dt {
+  color: var(--nexor-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.nexor-step-math dd {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.nexor-step-before .nexor-math {
+  color: #a3b0c2;
+  font-size: 14px;
+}
+
+.nexor-step-after .nexor-math {
+  font-size: 16px;
+}
+
+.nexor-step-exact {
+  color: var(--nexor-cyan);
+}
+
+.nexor-step-relation {
+  flex: none;
+  color: var(--nexor-text);
+  font-size: 17px;
+}
+
+.nexor-step-apps > summary {
+  display: flex;
+  min-height: 32px;
+  cursor: pointer;
+  align-items: center;
+  color: var(--nexor-muted);
+  font-size: 12px;
+}
+
+.nexor-step-apps ul {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nexor-step-apps li {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: var(--nexor-bg);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.nexor-step-arrow {
+  color: var(--nexor-muted);
+}
+
+.nexor-step-app-rule {
+  color: #c4b5fd;
+  font-size: 11px;
+}
+
+.nexor-step-explanation {
+  color: #a3b0c2;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.nexor-step-values {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.nexor-step-values > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  border-radius: 6px;
+  background: var(--nexor-interactive);
+  padding: 6px 10px;
+}
+
+.nexor-step-values dt {
+  color: var(--nexor-muted);
+  font-size: 12px;
+}
+
+.nexor-step-values dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--nexor-text);
+  font-family: var(--nexor-font-mono);
+  font-size: 12px;
+}
+
+.nexor-step-single {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.nexor-step-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nexor-step-progress {
+  color: var(--nexor-muted);
+  font-family: var(--nexor-font-mono);
+  font-size: 12px;
+}
+
+.nexor-procedure-limits ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: #a3b0c2;
+  font-size: 12px;
+  line-height: 1.55;
+  list-style: disc;
+}
+
+.nexor-field-error {
+  color: #fca5a5;
+  font-size: 13px;
+}
 
 .nexor-notes-label {
   margin-bottom: 4px;
@@ -763,11 +1162,6 @@
   font-weight: 600;
 }
 
-.nexor-notes-text {
-  color: #a3b0c2;
-  font-size: 13px;
-  line-height: 1.6;
-}
 
 
 /* ---------- Breakpoints ---------- */
@@ -783,10 +1177,6 @@
 
   .nexor-viz-plot {
     height: 460px;
-  }
-
-  .nexor-result-card-notes {
-    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -849,16 +1239,6 @@
     height: auto;
     flex: 1;
   }
-
-  .nexor-result-card-notes {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (min-width: 1440px) {
-  .nexor-result-card-notes {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 @media (max-width: 1023px) {
@@ -868,7 +1248,11 @@
   .nexor-examples > summary,
   .nexor-result-details > summary,
   .nexor-layer-toggle,
-  .nexor-viz-reset {
+  .nexor-viz-reset,
+  .nexor-segmented button,
+  .nexor-procedure-toggle,
+  .nexor-step-nav button,
+  .nexor-step-apps > summary {
     min-height: 44px;
   }
 }
@@ -878,7 +1262,10 @@
   .nexor-new-analysis,
   .nexor-explore-card,
   .nexor-editor-action,
-  .nexor-equation-field {
+  .nexor-equation-field,
+  .nexor-segmented button,
+  .nexor-procedure-toggle,
+  .nexor-step-nav button {
     transition: none;
   }
 }

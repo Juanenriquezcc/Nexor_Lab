@@ -1,7 +1,7 @@
 {
   "name": "nexor-lab",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "NEXOR, laboratorio matemático local: derivadas, integrales numéricas, límites por rutas y optimización con restricciones para funciones de una y dos variables, con visualización 3D. Sin backend ni cuentas.",
   "type": "module",
   "scripts": {
@@ -15,6 +15,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "katex": "^0.16.22",
     "lucide-react": "^0.546.0",
     "mathjs": "^15.1.0",
     "plotly.js": "^3.2.0",

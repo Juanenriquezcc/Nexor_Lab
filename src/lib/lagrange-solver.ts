@@ -47,12 +47,33 @@ function solve3(A: number[][], b: number[]): number[] | null {
   return [M[0][3], M[1][3], M[2][3]];
 }
 
+export interface LagrangeReport {
+  candidates: Candidate[];
+  /** Seeds projected onto g = 0 from the grid on [−5, 5]². */
+  seeds: number;
+  /** Seeds actually run (the search stops after 21 candidates). */
+  evaluatedSeeds: number;
+  /** Newton runs that met the step tolerance. */
+  converged: number;
+  /** Converged runs discarded because the Lagrange residual exceeded 1e-4. */
+  rejected: number;
+}
+
+export const LAGRANGE_SEARCH = {
+  range: 5,
+  gridStep: 0.25,
+  newtonTolerance: 1e-6,
+  maxIterations: 60,
+  residualTolerance: 1e-4,
+  duplicateDistance: 0.2,
+};
+
 /**
  * Candidates of f subject to g = 0 (∇f = λ∇g), found with Newton's method
  * from seeds on the constraint. Moved verbatim from the optimization module;
  * only the seeding and the classification changed.
  */
-export function findLagrangeCandidates(feval: Fn, geval: Fn): Candidate[] {
+export function findLagrangeCandidatesReport(feval: Fn, geval: Fn): LagrangeReport {
   const dfdx = (x: number, y: number) => (feval(x + h, y) - feval(x - h, y)) / (2 * h);
   const dfdy = (x: number, y: number) => (feval(x, y + h) - feval(x, y - h)) / (2 * h);
   const dgdx = (x: number, y: number) => (geval(x + h, y) - geval(x - h, y)) / (2 * h);
@@ -128,8 +149,8 @@ export function findLagrangeCandidates(feval: Fn, geval: Fn): Candidate[] {
   // seeds for circles, where Newton's system is singular for f = xy.
   function generateSeeds(): Array<{ x: number; y: number; lambda: number }> {
     const seeds: Array<{ x: number; y: number; lambda: number }> = [];
-    const range = 5,
-      step = 0.25,
+    const range = LAGRANGE_SEARCH.range,
+      step = LAGRANGE_SEARCH.gridStep,
       band = 1;
     for (let i = 0; i <= (2 * range) / step; i++) {
       for (let j = 0; j <= (2 * range) / step; j++) {
@@ -165,11 +186,16 @@ export function findLagrangeCandidates(feval: Fn, geval: Fn): Candidate[] {
   const seen: { x: number; y: number }[] = [];
 
   const isNear = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-    Math.hypot(a.x - b.x, a.y - b.y) < 0.2;
+    Math.hypot(a.x - b.x, a.y - b.y) < LAGRANGE_SEARCH.duplicateDistance;
 
+  let converged = 0;
+  let rejected = 0;
+  let evaluatedSeeds = 0;
   for (const s of seeds) {
-    const out = newtonLagrange(s.x, s.y, s.lambda, 1e-6, 60);
+    evaluatedSeeds++;
+    const out = newtonLagrange(s.x, s.y, s.lambda, LAGRANGE_SEARCH.newtonTolerance, LAGRANGE_SEARCH.maxIterations);
     if (!out.ok || ![out.x, out.y].every(Number.isFinite)) continue;
+    converged++;
 
     const fx = dfdx(out.x, out.y),
       fy = dfdy(out.x, out.y);
@@ -180,7 +206,10 @@ export function findLagrangeCandidates(feval: Fn, geval: Fn): Candidate[] {
     const r2 = Math.abs(fy - out.lambda * gy);
     const r3 = Math.abs(g);
     const resid = Math.max(r1, r2, r3);
-    if (!(resid < 1e-4)) continue;
+    if (!(resid < LAGRANGE_SEARCH.residualTolerance)) {
+      rejected++;
+      continue;
+    }
 
     if (seen.some((p) => isNear(p, out))) continue;
     seen.push({ x: out.x, y: out.y });
@@ -197,5 +226,10 @@ export function findLagrangeCandidates(feval: Fn, geval: Fn): Candidate[] {
   }
 
   found.sort((a, b) => a.f - b.f);
-  return found;
+  return { candidates: found, seeds: seeds.length, evaluatedSeeds, converged, rejected };
+}
+
+/** Candidates of f subject to g = 0, sorted by f. */
+export function findLagrangeCandidates(feval: Fn, geval: Fn): Candidate[] {
+  return findLagrangeCandidatesReport(feval, geval).candidates;
 }

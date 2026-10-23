@@ -99,6 +99,8 @@ export function SurfaceVisualizer({
 
   // Plotly reads z[row][column] as (y, x): rows follow y so the surface is f(x,y), not f(y,x).
   const zValues = useMemo(() => yValues.map((y) => xValues.map((x) => f(x, y))), [f]);
+  // A grid without a single real value would make Plotly draw NaN geometry (console errors).
+  const hasRealValues = useMemo(() => zValues.some((row) => row.some(Number.isFinite)), [zValues]);
 
   const surfaceTrace = useMemo(() => ({
     z: zValues, x: xValues, y: yValues, type: "surface", name: "Superficie", showlegend: false,
@@ -334,6 +336,14 @@ export function SurfaceVisualizer({
     // clave estable: mantiene zoom/rotación/traslación entre actualizaciones de data
     uirevision: UIREVISION_KEY,
   }), []);
+
+  if (!hasRealValues) {
+    return (
+      <p className="nexor-empty-note" role="status">
+        f no toma valores reales en ninguno de los puntos de [−5, 5]² que se dibujan: no hay superficie que mostrar.
+      </p>
+    );
+  }
 
   return (
     // Fills its container: the workspace decides the viewer height per breakpoint.

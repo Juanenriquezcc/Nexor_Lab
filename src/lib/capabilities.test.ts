@@ -1,7 +1,7 @@
 import { analyzeExpressionResult } from "./capabilities";
 import { compileExpression, safeEvaluate } from "./expression";
 import { tripleIntegral } from "./integrate";
-import { trySymbolicDerivatives } from "./symbolic";
+import { differentiate } from "./differentiation";
 
 const capabilitiesOf = (source: string) => analyzeExpressionResult(compileExpression(source)).capabilities;
 
@@ -14,8 +14,9 @@ function compiled(source: string) {
 describe("analyzeExpressionResult", () => {
   it("x^2 only offers the one-variable derivative", () => {
     expect(capabilitiesOf("x^2")).toEqual(["derivative"]);
-    // The engine behind it: symbolic d/dx.
-    expect(trySymbolicDerivatives(compiled("x^2").node)?.dx).toBe("2 * x");
+    // The engine behind it: rule-based symbolic d/dx.
+    const derivation = differentiate(compiled("x^2").node, "x", ["x"]);
+    expect(derivation.ok && derivation.result.toString()).toBe("2 * x");
   });
 
   it("x^2 + y^2 offers the plane engines and the engines evaluate it", () => {

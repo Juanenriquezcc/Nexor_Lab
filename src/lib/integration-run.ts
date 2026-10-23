@@ -14,8 +14,16 @@ type Bound = (t: number) => number;
 export type IntegrationOutcome =
   | {
       ok: true;
+      /** Approximation with 2n subdivisions per axis (the reported value). */
       value: number;
+      /** |T(2n) − T(n)|: heuristic error estimate, not a guaranteed bound. */
       error: number;
+      /** Approximation with n subdivisions per axis. */
+      coarse: number;
+      /** Evaluations of f over both runs. */
+      samples: number;
+      /** Evaluations without a real value; the double-integral rules add them as 0. */
+      skipped: number;
       /** Evaluable region bounds, for drawing Type I / Type II outlines. */
       bounds?: { lower: Bound; upper: Bound };
     }
@@ -73,7 +81,7 @@ export function validateIntegrationJob(job: IntegrationJob): string | null {
 }
 
 /** Compiles a region bound that may only depend on `variable`. Evaluation errors propagate. */
-function boundFor(source: string, label: string, variable: "x" | "y"): Bound | string {
+export function boundFor(source: string, label: string, variable: "x" | "y"): Bound | string {
   const compiled = compileExpression(source);
   if (!compiled.ok) return `${label} no es una expresión válida: ${compiled.error.message}`;
   const others = compiled.expression.variables.filter((name) => name !== variable);
@@ -90,7 +98,14 @@ export function runIntegration(expression: CompiledExpression, job: IntegrationJ
   const invalid = validateIntegrationJob(job);
   if (invalid) return { ok: false, message: invalid };
 
-  const f = (x: number, y: number) => safeEvaluate(expression, { x, y });
+  let samples = 0;
+  let skipped = 0;
+  const count = (value: number) => {
+    samples++;
+    if (!Number.isFinite(value)) skipped++;
+    return value;
+  };
+  const f = (x: number, y: number) => count(safeEvaluate(expression, { x, y }));
   let coarse: number;
   let fine: number;
   let bounds: { lower: Bound; upper: Bound } | undefined;
@@ -115,7 +130,7 @@ export function runIntegration(expression: CompiledExpression, job: IntegrationJ
         fine = typeIIIntegral(f, job.yMin, job.yMax, lower, upper, n * 2, n * 2);
       }
     } else if (job.mode === "triple") {
-      const f3 = (x: number, y: number, z: number) => safeEvaluate(expression, { x, y, z });
+      const f3 = (x: number, y: number, z: number) => count(safeEvaluate(expression, { x, y, z }));
       coarse = tripleIntegral(f3, job.ax, job.bx, job.cy, job.dy, job.zMin, job.zMax, n, n, n);
       fine = tripleIntegral(f3, job.ax, job.bx, job.cy, job.dy, job.zMin, job.zMax, n * 2, n * 2, n * 2);
     } else {
@@ -134,5 +149,43 @@ export function runIntegration(expression: CompiledExpression, job: IntegrationJ
       message: "El resultado no es finito: la función o los límites de la región no producen valores reales en parte del dominio.",
     };
   }
-  return { ok: true, value: fine, error, bounds };
+  return { ok: true, value: fine, error, coarse, samples, skipped, bounds };
+}
+
+/** Outcome without the bound functions, which cannot cross the worker boundary. */
+export type IntegrationResultData =
+  | Omit<Extract<IntegrationOutcome, { ok: true }>, "bounds">
+  | Extract<IntegrationOutcome, { ok: false }>;
+
+export interface IntegrationRequest {
+  id: number;
+  /** Normalized source of the working expression; the worker compiles it again. */
+  source: string;
+  job: IntegrationJob;
+  n: number;
+}
+
+export interface IntegrationResponse {
+  id: number;
+  outcome: IntegrationResultData;
+  /** Computation time measured where the integration ran. */
+  elapsedMs: number;
+  /** "worker" when it ran off the main thread. */
+  thread: "worker" | "main";
+}
+
+/** Shared by the worker and the main-thread fallback. */
+export function computeIntegration(request: IntegrationRequest, thread: IntegrationResponse["thread"]): IntegrationResponse {
+  const start = performance.now();
+  const compiled = compileExpression(request.source);
+  let outcome: IntegrationResultData;
+  if (!compiled.ok) {
+    outcome = { ok: false, message: compiled.error.message };
+  } else {
+    const result = runIntegration(compiled.expression, request.job, request.n);
+    outcome = result.ok
+      ? { ok: true, value: result.value, error: result.error, coarse: result.coarse, samples: result.samples, skipped: result.skipped }
+      : result;
+  }
+  return { id: request.id, outcome, elapsedMs: performance.now() - start, thread };
 }

@@ -1,7 +1,11 @@
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import type { CompiledExpression } from "../lib/expression";
-import { runIntegration, validateIntegrationJob, type IntegrationJob } from "../lib/integration-run";
+import { boundFor, validateIntegrationJob, type IntegrationJob, type IntegrationResultData } from "../lib/integration-run";
+import { IntegrationRunner } from "../lib/integration-client";
+import { buildIntegrationProcedure } from "../lib/integration-procedure";
+import { formatNumber } from "../lib/procedure";
 import { ResultCard, ResultFormula, ResultValues } from "./workspace/ResultCard";
+import { ProcedurePanel } from "./workspace/ProcedurePanel";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -14,14 +18,6 @@ const modeTitles: Record<Mode, string> = {
   typeII: "Integral doble sobre una región de Tipo II",
   polar: "Integral doble en coordenadas polares",
   triple: "Integral triple sobre una caja",
-};
-// Method actually used by each mode (see lib/integrate.ts and lib/integration-run.ts).
-const procedureByMode: Record<Mode, string> = {
-  rect: "con la regla del trapecio compuesta sobre el rectángulo",
-  typeI: "con la regla del trapecio compuesta, integrando primero en y entre y1(x) e y2(x) y luego en x",
-  typeII: "con la regla del trapecio compuesta, integrando primero en x entre x1(y) y x2(y) y luego en y",
-  polar: "con la regla del punto medio en (r, θ), multiplicando cada muestra por el jacobiano r",
-  triple: "con la regla del trapecio compuesta en tres dimensiones sobre la caja",
 };
 
 export type IntegrationResult = {
@@ -113,7 +109,22 @@ export default function IntegrationCalculator({
   const [error, setError] = useState<number | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   // What was integrated, captured at calculation time so later edits don't relabel the result.
-  const [computed, setComputed] = useState<{ mode: Mode; notation: string; region: string; n: number } | null>(null);
+  const [computed, setComputed] = useState<{
+    mode: Mode;
+    notation: string;
+    region: string;
+    n: number;
+    tol: number;
+    deg: boolean;
+    job: IntegrationJob;
+    expression: CompiledExpression;
+    outcome: Extract<IntegrationResultData, { ok: true }>;
+    elapsedMs: number;
+    thread: "worker" | "main";
+  } | null>(null);
+  // Integrations run in a Web Worker; a newer request or a cancel discards the running one.
+  const runnerRef = useRef<IntegrationRunner | null>(null);
+  useEffect(() => () => runnerRef.current?.dispose(), []);
 
   // Validaciones básicas por tipo
   const rectInvalid =
@@ -139,48 +150,67 @@ export default function IntegrationCalculator({
   }, [mode, ax, bx, cy, dy, zMin, zMax, xMinI, xMaxI, y1Expr, y2Expr, yMinII, yMaxII, x1Expr, x2Expr, rMin, rMax, tMin, tMax, deg]);
   const validationMessage = validateIntegrationJob(job);
 
-  const calc = useCallback(() => {
+  const calc = useCallback(async () => {
     if (validateIntegrationJob(job)) return;
     setBusy(true);
     setResult(null);
     setError(null);
     setFailure(null);
+    setComputed(null);
     onResult?.(null);
-    requestAnimationFrame(() => {
-      try {
-        const outcome = runIntegration(expression, job, n);
-        if (!outcome.ok) {
-          // The UI shows a readable message; the raw cause stays available for debugging.
-          if (outcome.detail) console.error("[integración]", outcome.detail);
-          setFailure(outcome.message);
-          return;
-        }
-        setResult(outcome.value);
-        setError(outcome.error);
-        if (job.mode === "rect" || job.mode === "triple") {
-          onRegionChange?.({ ax: job.ax, bx: job.bx, cy: job.cy, dy: job.dy });
-        } else if (job.mode === "typeI" && outcome.bounds) {
-          onRegionTypeI?.({ xMin: job.xMin, xMax: job.xMax, y1: tolerant(outcome.bounds.lower), y2: tolerant(outcome.bounds.upper) });
-        } else if (job.mode === "typeII" && outcome.bounds) {
-          onRegionTypeII?.({ yMin: job.yMin, yMax: job.yMax, x1: tolerant(outcome.bounds.lower), x2: tolerant(outcome.bounds.upper) });
-        } else if (job.mode === "polar") {
-          onRegionPolar?.({ rMin: job.rMin, rMax: job.rMax, tMin: job.tMin, tMax: job.tMax });
-        }
-        const t1 = deg ? `${tMin}°` : `${tMin}`;
-        const t2 = deg ? `${tMax}°` : `${tMax} rad`;
-        const described: Record<Mode, { notation: string; region: string }> = {
-          rect: { notation: "∬_R f(x,y) dA", region: `R = [${ax}, ${bx}] × [${cy}, ${dy}]` },
-          typeI: { notation: "∫∫ f(x,y) dy dx", region: `x ∈ [${xMinI}, ${xMaxI}], ${y1Expr} ≤ y ≤ ${y2Expr}` },
-          typeII: { notation: "∫∫ f(x,y) dx dy", region: `y ∈ [${yMinII}, ${yMaxII}], ${x1Expr} ≤ x ≤ ${x2Expr}` },
-          polar: { notation: "∫∫ f(r cosθ, r sinθ) r dr dθ", region: `r ∈ [${rMin}, ${rMax}], θ ∈ [${t1}, ${t2}]` },
-          triple: { notation: "∭_B f(x,y,z) dV", region: `B = [${ax}, ${bx}] × [${cy}, ${dy}] × [${zMin}, ${zMax}]` },
-        };
-        setComputed({ mode, n, ...described[mode] });
-        onResult?.({ mode, value: outcome.value, error: outcome.error });
-      } finally {
-        setBusy(false);
+    runnerRef.current ??= new IntegrationRunner();
+    const response = await runnerRef.current.run({ source: expression.source, job, n });
+    // null: cancelled or superseded by a newer request; nothing of it may reach the UI.
+    if (!response) return;
+    try {
+      const outcome = response.outcome;
+      if (!outcome.ok) {
+        // The UI shows a readable message; the raw cause stays available for debugging.
+        if (outcome.detail) console.error("[integración]", outcome.detail);
+        setFailure(outcome.message);
+        return;
       }
-    });
+      setResult(outcome.value);
+      setError(outcome.error);
+      if (job.mode === "rect" || job.mode === "triple") {
+        onRegionChange?.({ ax: job.ax, bx: job.bx, cy: job.cy, dy: job.dy });
+      } else if (job.mode === "typeI" || job.mode === "typeII") {
+        // Outlines are drawn on the main thread from the same bound expressions the worker used.
+        const typeI = job.mode === "typeI";
+        const lower = boundFor(typeI ? job.y1 : job.x1, "", typeI ? "x" : "y");
+        const upper = boundFor(typeI ? job.y2 : job.x2, "", typeI ? "x" : "y");
+        if (typeof lower !== "string" && typeof upper !== "string") {
+          if (job.mode === "typeI") onRegionTypeI?.({ xMin: job.xMin, xMax: job.xMax, y1: tolerant(lower), y2: tolerant(upper) });
+          else onRegionTypeII?.({ yMin: job.yMin, yMax: job.yMax, x1: tolerant(lower), x2: tolerant(upper) });
+        }
+      } else if (job.mode === "polar") {
+        onRegionPolar?.({ rMin: job.rMin, rMax: job.rMax, tMin: job.tMin, tMax: job.tMax });
+      }
+      const t1 = deg ? `${tMin}°` : `${tMin}`;
+      const t2 = deg ? `${tMax}°` : `${tMax} rad`;
+      const described: Record<Mode, { notation: string; region: string }> = {
+        rect: { notation: "∬_R f(x,y) dA", region: `R = [${ax}, ${bx}] × [${cy}, ${dy}]` },
+        typeI: { notation: "∫∫ f(x,y) dy dx", region: `x ∈ [${xMinI}, ${xMaxI}], ${y1Expr} ≤ y ≤ ${y2Expr}` },
+        typeII: { notation: "∫∫ f(x,y) dx dy", region: `y ∈ [${yMinII}, ${yMaxII}], ${x1Expr} ≤ x ≤ ${x2Expr}` },
+        polar: { notation: "∫∫ f(r cosθ, r sinθ) r dr dθ", region: `r ∈ [${rMin}, ${rMax}], θ ∈ [${t1}, ${t2}]` },
+        triple: { notation: "∭_B f(x,y,z) dV", region: `B = [${ax}, ${bx}] × [${cy}, ${dy}] × [${zMin}, ${zMax}]` },
+      };
+      setComputed({
+        mode,
+        n,
+        tol,
+        deg,
+        job,
+        expression,
+        outcome,
+        elapsedMs: response.elapsedMs,
+        thread: response.thread,
+        ...described[mode],
+      });
+      onResult?.({ mode, value: outcome.value, error: outcome.error });
+    } finally {
+      setBusy(false);
+    }
   }, [
     job,
     expression,
@@ -205,6 +235,7 @@ export default function IntegrationCalculator({
     tMax,
     deg,
     n,
+    tol,
     onRegionChange,
     onRegionTypeI,
     onRegionTypeII,
@@ -226,6 +257,9 @@ export default function IntegrationCalculator({
           key={opt.id}
           type="button"
           onClick={() => {
+            // A result still being computed belongs to the previous region type.
+            runnerRef.current?.cancel();
+            setBusy(false);
             setMode(opt.id as Mode);
             setResult(null);
             setError(null);
@@ -246,12 +280,29 @@ export default function IntegrationCalculator({
     </div>
   );
 
+  // A new expression invalidates any result, including one still being computed.
   useEffect(() => {
+    runnerRef.current?.cancel();
+    setBusy(false);
     setResult(null);
     setError(null);
     setFailure(null);
+    setComputed(null);
     onResult?.(null);
   }, [expression, onResult]);
+
+  const procedure = useMemo(
+    () =>
+      computed
+        ? buildIntegrationProcedure(computed.expression, computed.job, computed.outcome, {
+            n: computed.n,
+            tolerance: computed.tol,
+            elapsedMs: computed.elapsedMs,
+            degrees: computed.deg,
+          })
+        : null,
+    [computed],
+  );
 
   useEffect(()=>{
     if(mode!=="rect" && mode!=="triple") onRegionChange?.(null);
@@ -435,52 +486,68 @@ export default function IntegrationCalculator({
         )}
       </details>
 
-      <Button
-        onClick={calc}
-        disabled={busy || validationMessage !== null}
-        aria-describedby={validationMessage ? "integration-validation" : undefined}
-        className="w-full sm:w-auto"
-      >
-        {busy ? "Calculando…" : `Calcular integral ${mode === "rect" ? "(Rectangular)" : mode === "typeI" ? "(Tipo I)" : mode === "typeII" ? "(Tipo II)" : mode === "polar" ? "(Polares)" : "(Triple)"}`}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          onClick={calc}
+          disabled={busy || validationMessage !== null}
+          aria-describedby={validationMessage ? "integration-validation" : undefined}
+          className="w-full sm:w-auto"
+        >
+          {busy ? "Calculando…" : `Calcular integral ${mode === "rect" ? "(Rectangular)" : mode === "typeI" ? "(Tipo I)" : mode === "typeII" ? "(Tipo II)" : mode === "polar" ? "(Polares)" : "(Triple)"}`}
+        </Button>
+        {busy && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              runnerRef.current?.cancel();
+              setBusy(false);
+            }}
+            className="w-full sm:w-auto"
+          >
+            Cancelar
+          </Button>
+        )}
+      </div>
       </div>
 
       {/* 4) Resultado */}
       {busy ? (
         <ResultCard title={modeTitles[mode]} status={{ label: "Calculando…", tone: "neutral" }}>
-          <p className="text-sm text-muted-foreground">Aproximando la integral sobre la región…</p>
+          <p className="text-sm text-muted-foreground" role="status">
+            Aproximando la integral en segundo plano; la página sigue respondiendo y puedes cancelar.
+          </p>
         </ResultCard>
       ) : failure ? (
         <ResultCard title={modeTitles[mode]} status={{ label: "Error de cálculo", tone: "error" }}>
           <p className="text-sm text-red-300" role="alert">{failure}</p>
         </ResultCard>
-      ) : result !== null && error !== null && computed ? (
-        <ResultCard
-          title={modeTitles[computed.mode]}
-          status={
-            error > (tol || 0)
-              ? { label: "Error estimado sobre la tolerancia", tone: "warning" }
-              : { label: "Error dentro de la tolerancia", tone: "ok" }
-          }
-          description={computed.region}
-          note={`Aproximación numérica con n = ${computed.n} y 2n subdivisiones por eje; tolerancia ε = ${tol}.`}
-          procedure={`La integral se aproximó numéricamente ${procedureByMode[computed.mode]}; la diferencia entre las resoluciones n y 2n estima el error.`}
-          interpretation={
-            computed.mode === "triple"
-              ? "El resultado representa la acumulación aproximada de f sobre la caja seleccionada."
-              : "El resultado representa la acumulación aproximada de f sobre la región: el volumen con signo bajo la superficie."
-          }
-        >
-          <ResultFormula primary>
-            <p>{computed.notation} ≈ {result.toPrecision(8)}</p>
-          </ResultFormula>
-          <ResultValues
-            items={[
-              { label: "Valor", value: result.toPrecision(8) },
-              { label: "Error estimado", value: `±${error.toExponential(2)}` },
-            ]}
-          />
-        </ResultCard>
+      ) : result !== null && error !== null && computed && procedure ? (
+        <>
+          <ResultCard
+            title={modeTitles[computed.mode]}
+            status={
+              error > (computed.tol || 0)
+                ? { label: "Error estimado sobre la tolerancia", tone: "warning" }
+                : { label: "Error estimado dentro de la tolerancia", tone: "ok" }
+            }
+            description={computed.region}
+            note={`Aproximación numérica con n = ${computed.n} y 2n = ${2 * computed.n} subdivisiones por eje; tolerancia ε = ${computed.tol}.`}
+          >
+            <ResultFormula primary>
+              <p>{computed.notation} ≈ {formatNumber(result)}</p>
+            </ResultFormula>
+            <ResultValues
+              items={[
+                { label: "Error estimado |T₂ₙ − Tₙ|", value: `≈ ${formatNumber(error, 3)}` },
+                {
+                  label: computed.thread === "worker" ? "Tiempo de cálculo (en segundo plano)" : "Tiempo de cálculo",
+                  value: `${formatNumber(computed.elapsedMs, 3)} ms`,
+                },
+              ]}
+            />
+          </ResultCard>
+          <ProcedurePanel procedure={procedure} />
+        </>
       ) : (
         <ResultCard title={modeTitles[mode]} status={{ label: "Sin calcular", tone: "neutral" }}>
           <p className="text-sm text-muted-foreground">Define la región y pulsa “Calcular integral”.</p>

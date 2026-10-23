@@ -14,17 +14,18 @@ instalación, tests), consulta el [README](README.md).
 3. [El editor de ecuaciones](#3-el-editor-de-ecuaciones)
 4. [Sintaxis de expresiones](#4-sintaxis-de-expresiones)
 5. [Explore](#5-explore)
-6. [Derivadas](#6-derivadas)
-7. [Derivadas parciales y gradiente](#7-derivadas-parciales-y-gradiente)
-8. [Integrales](#8-integrales)
-9. [Límites](#9-límites)
-10. [Optimización](#10-optimización)
-11. [Visualización 3D](#11-visualización-3d)
-12. [Historial](#12-historial)
-13. [Estados y errores](#13-estados-y-errores)
-14. [Ejemplos prácticos](#14-ejemplos-prácticos)
-15. [Consejos de uso](#15-consejos-de-uso)
-16. [Limitaciones](#16-limitaciones)
+6. [El procedimiento paso a paso](#6-el-procedimiento-paso-a-paso)
+7. [Derivadas](#7-derivadas)
+8. [Derivadas parciales y gradiente](#8-derivadas-parciales-y-gradiente)
+9. [Integrales](#9-integrales)
+10. [Límites](#10-límites)
+11. [Optimización](#11-optimización)
+12. [Visualización 3D](#12-visualización-3d)
+13. [Historial](#13-historial)
+14. [Estados y errores](#14-estados-y-errores)
+15. [Ejemplos prácticos](#15-ejemplos-prácticos)
+16. [Consejos de uso](#16-consejos-de-uso)
+17. [Limitaciones](#17-limitaciones)
 
 ---
 
@@ -33,8 +34,9 @@ instalación, tests), consulta el [README](README.md).
 NEXOR es un laboratorio matemático que funciona en tu navegador. Escribes una
 función y NEXOR te muestra qué análisis puedes hacer con ella: derivadas,
 gradiente, integrales, límites y optimización con una restricción. Cada
-resultado incluye el método empleado, una breve interpretación y, si la
-función es de `x` e `y`, su superficie en 3D.
+resultado viene con su **procedimiento**: los pasos que llevan de tu función
+al resultado, con la regla o el método de cada uno y lo que significa. Si la
+función es de `x` e `y`, además ves su superficie en 3D.
 
 No necesitas cuenta ni conexión con ningún servidor: tus ecuaciones no salen de
 tu equipo.
@@ -47,7 +49,8 @@ tu equipo.
 2. Escribe una función en **Ecuación de trabajo**, por ejemplo `x^2 + y^2`.
 3. En **Explore**, elige qué quieres analizar.
 4. Configura la operación (punto, región, restricción…) en **Operación**.
-5. Lee el **Resultado** y observa la **Visualización**.
+5. Lee el **Resultado**, recorre el **Procedimiento** que aparece debajo y
+   observa la **Visualización**.
 
 Distribución de la pantalla:
 
@@ -103,6 +106,9 @@ Las funciones se escriben con su nombre en inglés: `sin`, no `sen`. Si escribes
 un nombre que NEXOR no conoce, como `sen(x)`, no aparece un error de sintaxis:
 ese nombre se toma como otra variable y no se ofrece ninguna operación.
 
+Una función sin paréntesis, como en `x + sin`, es un error: NEXOR te pide que
+escribas `sin(…)` con su argumento.
+
 ## 5. Explore
 
 Explore muestra solo los análisis que NEXOR puede calcular correctamente para
@@ -121,47 +127,109 @@ tenías elegida deja de estar disponible, NEXOR cambia a la primera compatible.
 
 La tarjeta **Superficie 3D** te lleva al visor.
 
-## 6. Derivadas
+## 6. El procedimiento paso a paso
 
-Para una función de una variable, por ejemplo `x^3`:
+Debajo de cada resultado aparece el **Procedimiento**. No es un texto genérico:
+cada paso es una transformación o un cálculo que NEXOR hizo de verdad para
+llegar al resultado.
+
+Cada paso indica su tipo:
+
+| Tipo | Qué significa |
+|---|---|
+| **Planteamiento** | Qué se va a calcular: la función, la variable, la región o el punto. |
+| **Transformación simbólica** | Una regla matemática (suma, producto, cadena…) reescribe la expresión. El resultado es **exactamente igual** a lo anterior. |
+| **Evaluación numérica** | Se sustituyen números en una expresión ya obtenida. Verás `=` si la cuenta es exacta (por ejemplo `= 12/25`) y `≈` si es un valor redondeado. |
+| **Aproximación numérica** | Un método numérico produce un valor aproximado (integrales, límites, Lagrange). Siempre con `≈`. |
+| **Interpretación** | Qué significa el resultado. No afirma nada que no se haya calculado. |
+
+En una transformación simbólica verás:
+
+- **Regla:** la forma general de la regla, por ejemplo `(u·v)' = u'·v + u·v'`.
+- **Antes / Después:** la expresión completa antes y después del paso.
+- **Dónde se aplicó cada regla:** despliégalo para ver qué parte concreta
+  cambió con cada regla.
+- **✓ Comprobado numéricamente:** NEXOR evaluó las dos expresiones en varios
+  puntos y coinciden. Es una comprobación numérica, no una demostración.
+
+Controles:
+
+- **Todos los pasos** muestra el desarrollo completo.
+- **Paso a paso** muestra un paso cada vez; avanza con **Siguiente** y
+  **Anterior**, o con las flechas ← y → del teclado.
+- **Contraer** oculta el desarrollo; **Ver N pasos** lo vuelve a mostrar.
+- Al final aparecen las **Limitaciones** de ese cálculo.
+
+## 7. Derivadas
+
+Para una función de una variable, por ejemplo `x^3 + 2x^2 - 5x + 1`:
 
 1. Escribe la función.
 2. En Explore elige **Derivada**.
-3. El resultado muestra `f′(x)` simbólica (para `x^3`: `3 * x ^ 2`) y el valor
-   numérico `f′(0)`.
+3. En **Punto de evaluación x₀** escribe dónde quieres evaluarla, por ejemplo
+   `1`. Puedes usar constantes como `pi/2` o `sqrt(2)`; el decimal se escribe
+   con punto (`0.5`).
+4. El resultado muestra `f′(x) = 3x² + 4x − 5`, el valor `f′(1) = 2` y `f(1)`.
 
-En una variable no se puede elegir el punto: el valor numérico se calcula
-siempre en `x = 0`. Las fórmulas se muestran tal como las genera el motor, por
-ejemplo `2 * x`.
+El procedimiento recorre el desarrollo:
 
-Pulsa **Ecuación del plano tangente** para ver también la ecuación del plano
-tangente.
+1. `f′(x) = d/dx[x³ + 2x² − 5x + 1]`
+2. **Regla de la suma:** `d/dx[x³] + d/dx[2x²] − d/dx[5x] + d/dx[1]`
+3. **Potencia, factor constante y constante:** `3x² + 2·d/dx[x²] − 5·d/dx[x] + 0`
+4. **Potencia y derivada de la variable:** `3x² + 2·2·x¹ − 5·1 + 0`
+5. **Simplificación:** `3x² + 4x − 5`
+6. **Evaluación en x = 1:** `3·(1)² + 4·(1) − 5 = 2`
+7. **Interpretación:** la pendiente de la recta tangente en `x = 1` es 2, y la
+   recta tangente es `y = −1 + 2·(x − 1)`.
 
-## 7. Derivadas parciales y gradiente
+Reglas disponibles: constante, suma y resta, factor constante, producto,
+cociente, potencia, regla de la cadena, exponenciales (`e^x`, `exp`, `2^x`),
+logaritmos (`ln`, `log(x, b)`, `log10`, `log2`), raíces (`sqrt`, `cbrt`),
+trigonométricas (`sin`, `cos`, `tan`, `sec`, `csc`, `cot`, `asin`, `acos`,
+`atan`), hiperbólicas (`sinh`, `cosh`, `tanh`) y `abs`.
+
+Si la función usa algo sin regla (por ejemplo `floor(x)`), NEXOR lo dice: no
+muestra un desarrollo inventado.
+
+Si el punto está fuera del dominio de la función (por ejemplo `ln(x)` en
+`x = −1`), la derivada **no existe** en ese punto, aunque la fórmula de `f′`
+dé un número.
+
+Las constantes como `ln 2` o `√2` se conservan exactas en las fórmulas: la
+derivada de `2^x` se muestra como `2^x · log(2)`, no con decimales.
+
+## 8. Derivadas parciales y gradiente
 
 Para una función de `x` e `y`, por ejemplo `x^2 + y^2`:
 
 **Derivadas parciales**
 
 1. En Explore elige **Derivadas parciales**.
-2. En **Punto de evaluación (x₀,y₀)** escribe el punto, por ejemplo `1,1`.
-3. El resultado muestra `∂f/∂x` y `∂f/∂y` simbólicas (`2 * x`, `2 * y`) y sus
-   valores en el punto (`2`, `2`).
+2. En **Punto de evaluación (x₀, y₀)** escribe el punto, por ejemplo `1, 1`.
+3. El resultado muestra `∂f/∂x` y `∂f/∂y` (`2x`, `2y`) y sus valores en el
+   punto (`2`, `2`).
+
+El procedimiento tiene una sección para `∂f/∂x` y otra para `∂f/∂y`. Al derivar
+respecto de `x`, todo lo que solo depende de `y` se trata como una constante:
+por ejemplo, en `x^2 y + 3y^2`, el término `3y²` tiene derivada 0 respecto de
+`x`. Después vienen la evaluación en el punto y el plano tangente.
 
 **Gradiente**
 
 1. En Explore elige **Gradiente**.
-2. El resultado muestra `∇f(P)`, su magnitud `‖∇f‖` y `f(P)`. Para `x^2 + y^2`
-   en `(1,1)`: `∇f = (2, 2)`, `‖∇f‖ ≈ 2,828`, `f(P) = 2`.
+2. El resultado muestra `∇f(x,y)`, su valor `∇f(P)`, la magnitud `‖∇f(P)‖` y
+   `f(P)`. Para `x^2*y + 3*y^2` en `(1, 2)`: `∇f = (2xy, x² + 6y)`,
+   `∇f(1, 2) = (4, 13)` y `‖∇f‖ ≈ 13,601471`.
 
-Los valores en el punto son aproximaciones numéricas; las fórmulas son
-simbólicas. En el visor verás el punto, el plano tangente y una flecha (cono)
-en la dirección de ∇f.
+Las fórmulas son simbólicas y los valores en el punto salen de sustituir el
+punto en ellas: con `=` si la cuenta es exacta y con `≈` si se redondeó. En el
+visor verás el punto, el plano tangente y una flecha (cono) en la dirección de
+∇f.
 
-Si escribes mal el punto, el visor deja de mostrarlo y el resultado conserva
-los valores del último punto válido.
+Si escribes mal el punto, aparece un mensaje que explica el problema y no se
+muestra ningún valor en el punto hasta que lo corrijas.
 
-## 8. Integrales
+## 9. Integrales
 
 > **Las integrales de NEXOR son numéricas.** El resultado es una aproximación
 > acompañada de un error estimado; no se calcula una antiderivada.
@@ -179,10 +247,21 @@ los valores del último punto válido.
 3. Completa los límites.
 4. Pulsa **Calcular integral**.
 
-El resultado muestra el valor y el **error estimado** (la diferencia entre dos
-resoluciones). Si el error supera la tolerancia, verás un aviso: puedes
-aumentar la resolución `n` en **Opciones avanzadas** (con valores muy altos el
-cálculo tarda más).
+El resultado muestra el valor, el **error estimado** (la diferencia entre dos
+resoluciones) y el tiempo de cálculo. Si el error supera la tolerancia, verás
+un aviso: puedes aumentar la resolución `n` en **Opciones avanzadas** (con
+valores muy altos el cálculo tarda más).
+
+El cálculo se hace en segundo plano: la página sigue respondiendo y puedes
+pulsar **Cancelar**. Si cambias la función mientras calcula, el cálculo se
+descarta y no verás un resultado de la función anterior.
+
+El procedimiento muestra la región, el método numérico usado y su fórmula
+(regla del trapecio o del punto medio), los tamaños de paso, cuántas veces se
+evaluó la función, las aproximaciones con `n` y `2n`, y el error estimado. En
+polares también muestra el cambio `x = r cos θ`, `y = r sin θ` y el factor `r`.
+Si la función no tiene valor real en algunos puntos de la región, el
+procedimiento dice cuántos fueron.
 
 Reglas de la región:
 
@@ -194,7 +273,7 @@ Reglas de la región:
 Si la región no se puede evaluar o el resultado no es un número real, verás un
 **Error de cálculo** con la explicación.
 
-## 9. Límites
+## 10. Límites
 
 > **Los límites de NEXOR son evidencia numérica, no una demostración.** NEXOR
 > evalúa la función a lo largo de varias rutas que se acercan al punto y
@@ -214,20 +293,30 @@ Si la región no se puede evaluar o el resultado no es un número real, verás u
    - **δ (radio inicial):** el primer radio de muestreo (entre 0,3 y 0,9).
    - **ConvTol:** cuándo una ruta individual se considera estable.
 
-La tabla de rutas y el resultado se actualizan al instante. Pulsa **Regenerar
-rutas** para dibujarlas en el visor; si cambias algo después, las rutas se
-retiran del visor hasta que vuelvas a regenerarlas. **Reset** restaura los
-valores iniciales.
+El resultado se actualiza al instante. Pulsa **Regenerar rutas** para
+dibujarlas en el visor; si cambias algo después, las rutas se retiran del visor
+hasta que vuelvas a regenerarlas. **Reset** restaura los valores iniciales.
+
+Si dejas vacío `x₀` o `y₀`, o escribes algo que no es un número, verás un
+mensaje y no se calcula nada hasta que lo corrijas.
+
+En el procedimiento verás la sustitución directa en el punto, las rutas y los
+radios usados, la **evolución** de los valores de cada ruta a medida que se
+acerca al punto, el criterio con el que se clasifica y lo que indica la
+evidencia.
 
 Cómo leer el resultado:
 
 - **Las rutas coinciden (evidencia numérica):** todas las rutas tienden a
   valores muy próximos. El valor mostrado es aproximado.
-- **Inconcluso:** las rutas no coinciden. Si dos rutas tienden a valores
-  distintos, el límite no existe. Una función que crece sin límite cerca del
-  punto también aparece como inconclusa.
+- **Inconcluso:** las rutas no coinciden. Si dos rutas estables tienden a
+  valores distintos, el procedimiento las nombra: si eso se confirma
+  analíticamente, el límite no existe. Una función que crece sin límite cerca
+  del punto también aparece como inconclusa, y también algunas funciones
+  continuas en puntos donde no son planas (ver
+  [Limitaciones](#17-limitaciones)).
 
-## 10. Optimización
+## 11. Optimización
 
 Busca extremos de `f(x,y)` cuando `x` e `y` deben cumplir una restricción
 `g(x,y) = 0`, con el método de los multiplicadores de Lagrange.
@@ -249,7 +338,15 @@ Compara los valores de `f` entre los candidatos para identificar el mayor y el
 menor. NEXOR no afirma que un candidato sea el máximo o el mínimo global. Los
 candidatos aparecen como diamantes verdes en el visor.
 
-## 11. Visualización 3D
+Si la restricción tiene un error, usa otra variable que no sea `x` o `y`, o no
+depende de ninguna, verás el motivo y el botón se desactiva.
+
+El procedimiento muestra la función de Lagrange `L = f − λ·g`, los gradientes
+de `f` y de `g`, el sistema de ecuaciones, cómo se resolvió (método de
+Newton), una comprobación de cada candidato (el **residuo**: cuánto falla al
+sustituirlo en el sistema; cuanto más pequeño, mejor) y la clasificación.
+
+## 12. Visualización 3D
 
 El visor muestra la superficie `z = f(x,y)` cuando tu expresión usa `x` e `y`.
 
@@ -278,7 +375,14 @@ ejemplo `P`, `f(P)`, `∇f(P)` y `‖∇f‖`.
 
 La superficie se dibuja en la zona `−5 ≤ x, y ≤ 4,75`.
 
-## 12. Historial
+Al abrir NEXOR, el visor tarda un poco más que el resto en aparecer («Cargando
+la visualización 3D…»): así puedes empezar a escribir antes. Mientras
+escribes, la superficie se actualiza cuando haces una pausa; mientras tanto
+verás **Actualizando superficie…** y la superficie anterior. Si la función no
+tiene ningún valor real en la zona dibujada, el visor lo explica en lugar de
+mostrar una superficie vacía.
+
+## 13. Historial
 
 - NEXOR guarda automáticamente las expresiones **válidas** que escribes (una
   expresión se guarda cuando permanece válida medio segundo).
@@ -289,7 +393,7 @@ La superficie se dibuja en la zona `−5 ≤ x, y ≤ 4,75`.
   dispositivos ni se envía a ningún servidor. Por ahora no hay un botón para
   borrarlo.
 
-## 13. Estados y errores
+## 14. Estados y errores
 
 | Verás | Significa |
 |---|---|
@@ -297,32 +401,41 @@ La superficie se dibuja en la zona `−5 ≤ x, y ≤ 4,75`.
 | **Expresión inválida** | Hay un error de sintaxis; revisa el mensaje |
 | **Sin operación disponible** / *No hay análisis disponibles* | La expresión es válida, pero ninguna operación es compatible con sus variables |
 | **Sin calcular** | La operación está lista; falta pulsar el botón de cálculo |
-| **Calculando…** | El cálculo está en curso |
+| **Calculando…** | El cálculo está en curso (en integrales, con botón **Cancelar**) |
+| **Actualizando superficie…** | La superficie todavía corresponde a la función anterior; se actualiza al hacer una pausa |
+| **✓ Comprobado numéricamente** (en un paso) | Las dos expresiones del paso coinciden en los puntos de prueba |
+| **no existe** | La derivada no existe en ese punto porque la función no está definida allí |
+| **Punto inválido** | El punto de evaluación o de aproximación tiene un error; el mensaje dice cuál |
 | ✓ (insignia verde) | Resultado válido |
-| ! (insignia ámbar) | Resultado válido con reservas: error sobre la tolerancia, límite inconcluso, sin candidatos o sin forma simbólica |
+| ! (insignia ámbar) | Resultado válido con reservas: error sobre la tolerancia, límite inconcluso, sin candidatos, sin forma simbólica o resultado de mathjs sin desarrollo |
 | × **Error de cálculo** | No se pudo calcular; el mensaje explica por qué |
 | **—** | No hay un valor real que mostrar en ese punto |
 
-## 14. Ejemplos prácticos
+## 15. Ejemplos prácticos
 
 Todos estos ejemplos se comprobaron en NEXOR. Los valores numéricos son
 aproximados.
 
 | Expresión | Operación | Configuración | Resultado |
 |---|---|---|---|
-| `x^2` | Derivada | — | `f′(x) = 2 * x`, `f′(0) = 0` |
-| `sin(x*y)` | Derivadas parciales | — | `∂f/∂x = y * cos(x * y)` |
-| `x^2 + y^2` | Derivadas parciales | punto `1,1` | `∂f/∂x = 2 * x`, `∂f/∂y = 2 * y`; valores `2` y `2` |
-| `x^2 + y^2` | Gradiente | punto `1,1` | `∇f = (2, 2)`, `‖∇f‖ ≈ 2,828` |
-| `x^2 + y^2` | Integral rectangular | `[−1,1] × [−1,1]` | ≈ 2,66688 (valor exacto 8/3) |
-| `x^2 + y^2` | Integral Tipo I | `x ∈ [−1,1]`, `x^2 ≤ y ≤ 1` | ≈ 0,83800 |
-| `x^2 + y^2 + z^2` | Integral triple | caja `[−1,1]³` | ≈ 8,0006 (valor exacto 8) |
+| `x^2` | Derivada | punto `0` | `f′(x) = 2x`, `f′(0) = 0` |
+| `x^3 + 2x^2 - 5x + 1` | Derivada | punto `1` | `f′(x) = 3x² + 4x − 5`, `f′(1) = 2` |
+| `x/(1+x^2)` | Derivada | punto `0.5` | `f′(x) = (1 − x²)/(x² + 1)²`, `f′(0,5) = 12/25` |
+| `sin(x^2)` | Derivada | punto `1` | `f′(x) = 2·cos(x²)·x`, ≈ 1,0806046 |
+| `sin(x*y)` | Derivadas parciales | punto `1, 0` | `∂f/∂x = cos(x·y)·y`, `∂f/∂y = cos(x·y)·x`; ≈ 0 y ≈ 1 |
+| `x^2 + y^2` | Derivadas parciales | punto `1, 1` | `∂f/∂x = 2x`, `∂f/∂y = 2y`; valores `2` y `2` |
+| `x^2*y + 3*y^2` | Gradiente | punto `1, 2` | `∇f = (2xy, x² + 6y)`, `∇f(1, 2) = (4, 13)`, `‖∇f‖ ≈ 13,601471` |
+| `x^2 + y^2` | Integral rectangular | `[−1,1] × [−1,1]` | ≈ 2,666875 (valor exacto 8/3) |
+| `x^2 + y^2` | Integral Tipo I | `x ∈ [−1,1]`, `x^2 ≤ y ≤ 1` | ≈ 0,837997 |
+| `x^2 + y^2` | Integral polar | `r ∈ [0,1]`, `θ ∈ [0, π/2]` | ≈ 0,39269141 (valor exacto π/8) |
+| `x^2 + y^2 + z^2` | Integral triple | caja `[−1,1]³` | ≈ 8,000625 (valor exacto 8) |
 | `x^2 + y^2` | Límite | punto `(0,0)` | «Las rutas coinciden», ≈ 0,0017 (el límite exacto es 0) |
 | `(x^2 - y^2)/(x^2 + y^2)` | Límite | punto `(0,0)` | Inconcluso: el límite no existe |
+| `sin(x^2+y^2)/(x^2+y^2)` | Límite | punto `(0,0)` | «Las rutas coinciden», ≈ 0,999999 (el límite es 1) |
 | `x*y` | Optimización | `x^2 + y^2 - 4` | 4 candidatos `(±1,41, ±1,41)`: máximos con `f = 2` y mínimos con `f = −2` |
 | `x^2 - y^2` | Optimización | `x^2 + y^2 - 4` | máximos en `(±2, 0)` con `f = 4`; mínimos en `(0, ±2)` con `f = −4` |
 
-## 15. Consejos de uso
+## 16. Consejos de uso
 
 - Usa `x` e `y` como variables, y `z` solo para la integral triple.
 - Escribe siempre `^` para las potencias y `*` cuando haya dudas: `2*x*y` es
@@ -335,20 +448,30 @@ aproximados.
   y recuerda que el resultado es una aproximación.
 - Si el visor queda en una vista extraña, pulsa **Centrar vista**.
 - Carga una función desde **Funciones de ejemplo** para empezar rápido.
+- Para estudiar un desarrollo, usa **Paso a paso** y despliega «Dónde se
+  aplicó cada regla».
 
-## 16. Limitaciones
+## 17. Limitaciones
 
 - Solo se analizan funciones de `x`, o de `x` e `y`; `z` solo en la integral
   triple. Otras letras como variable (`t`, `u`) no tienen operaciones.
-- En una variable solo está disponible la derivada, y su valor numérico se
-  calcula únicamente en `x = 0`. A veces muestra un número diminuto en lugar de
-  0 (por ejemplo, `1e-10`) por redondeo.
+- En una variable solo está disponible la derivada.
+- El desarrollo paso a paso cubre las reglas de la sección
+  [Derivadas](#7-derivadas); otras funciones (`floor`, `gamma`…) no tienen
+  desarrollo. No hay desarrollo de derivadas segundas.
+- La simplificación final no siempre da la forma más compacta.
+- La comprobación de cada paso es numérica, en unos pocos puntos: es una buena
+  señal, no una demostración.
 - Los límites son aproximaciones numéricas con una precisión limitada y nunca
-  indican «diverge»: esos casos aparecen como inconclusos.
-- Las integrales son numéricas. Las integrales triples o con una resolución
-  alta pueden tardar varios segundos y la pantalla no responde mientras tanto.
-- Si la función no tiene valor real en parte de una región doble, esa parte se
-  ignora en la integral.
+  indican «diverge»: esos casos aparecen como inconclusos. Además, en un punto
+  donde la función es continua pero no plana (por ejemplo `x^2 + y^2` en
+  `(1, 2)`), las rutas se acercan al valor correcto pero pueden diferir más que
+  ε y el resultado sale «Inconcluso».
+- Las integrales son numéricas: no se calcula una primitiva. Las integrales
+  triples o con una resolución alta pueden tardar varios segundos (la página
+  sigue respondiendo y puedes cancelar).
+- Si la función no tiene valor real en parte de una región doble, esos puntos
+  se cuentan como 0; el procedimiento te dice cuántos fueron.
 - La optimización busca candidatos solo en la zona `−5 ≤ x, y ≤ 5` y muestra
   como máximo 21.
 - La superficie 3D se dibuja solo en `−5 ≤ x, y ≤ 4,75`. Un punto fuera de esa

@@ -60,6 +60,18 @@ export function compileExpression(source: string): ExpressionResult {
         .filter((name) => name.length > 0 && !BUILT_IN_NAMES.has(name)),
     )].sort();
 
+    // "x + sin" parses, but a function used as a value has no number: every evaluation would fail.
+    let bareFunction: string | null = null;
+    node.traverse((child, path) => {
+      const name = (child as MathNode & { name?: string }).name;
+      if (bareFunction === null && child.type === "SymbolNode" && path !== "fn" && name && typeof (math as unknown as Record<string, unknown>)[name] === "function") {
+        bareFunction = name;
+      }
+    });
+    if (bareFunction !== null) {
+      return { ok: false, error: { source, message: `«${bareFunction}» es una función: escribe ${bareFunction}(…) con su argumento.` } };
+    }
+
     return {
       ok: true,
       expression: { source: normalized, compiled: node.compile(), variables, node },

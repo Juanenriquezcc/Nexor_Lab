@@ -1,12 +1,15 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useDeferredValue } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { gradientAt } from "../lib/derivatives";
 import { analyzeDomainAndRange } from "../lib/domain-range";
-import { trySymbolicDerivatives, tangentPlaneAt } from "../lib/symbolic";
+import { buildDerivativeReport, deriveExpression, type DerivativeMode } from "../lib/derivative-procedure";
 import { safeEvaluate, type CompiledExpression } from "../lib/expression";
-import { ResultCard, ResultFormula, ResultValues } from "./workspace/ResultCard";
+import { parsePoint } from "../lib/point";
+import { formatNumber, numberTex, type MathText } from "../lib/procedure";
+import { ResultCard, ResultFormula, ResultValues, type ResultTone } from "./workspace/ResultCard";
+import { MathFormula } from "./workspace/MathFormula";
+import { ProcedurePanel } from "./workspace/ProcedurePanel";
 
 interface Props {
   /** The validated working equation; this module never edits it. */
@@ -14,183 +17,171 @@ interface Props {
   requestedCapability?: "derivative" | "partialDerivative" | "gradient";
   onPointChange?: (p: { x: number; y: number } | null) => void;
   onGradientChange?: (gradient: { dfdx: number; dfdy: number; mag: number } | null) => void;
-  onSymbolicChange?: (symbolic: { dx: string; dy: string } | null) => void;
 }
 
+const TITLES: Record<DerivativeMode, string> = {
+  derivative: "Derivada",
+  partialDerivative: "Derivadas parciales",
+  gradient: "Gradiente",
+};
+
+const lhsTex = (variable: string, mode: DerivativeMode) =>
+  mode === "derivative" ? `f'(${variable})` : `\\frac{\\partial f}{\\partial ${variable}}`;
+
 export default function DerivativesCalculator({
-  expression,
+  expression: currentExpression,
   requestedCapability = "gradient",
   onPointChange,
   onGradientChange,
-  onSymbolicChange,
 }: Props) {
+  // The derivation and its formulas render in the background while typing; keystrokes commit first.
+  // Until it catches up the module is marked busy, so an older development is never shown as current.
+  const expression = useDeferredValue(currentExpression);
+  const catchingUp = expression !== currentExpression;
   const variables = expression.variables;
-  const [rawPoint, setRawPoint] = useState<string>("0,0");
-  const [point, setPoint] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const oneVariable = variables.length === 1;
+  const mode: DerivativeMode = oneVariable ? "derivative" : requestedCapability === "gradient" ? "gradient" : "partialDerivative";
+  // One input per dimension, so switching between f(x) and f(x,y) keeps each point.
+  const [rawPoints, setRawPoints] = useState({ one: "0", two: "0,0" });
+  const rawPoint = oneVariable ? rawPoints.one : rawPoints.two;
+  const parsed = useMemo(() => parsePoint(rawPoint, variables), [rawPoint, variables]);
+  const point = parsed.ok ? parsed.point : null;
 
-  // Parsear “x,y” a objeto punto y emitir al 3D
-  useEffect(() => {
-    const parts = rawPoint.split(/[,;\s]+/).filter(Boolean);
-    const x = Number(parts[0]);
-    const y = Number(parts[1]);
-    if (Number.isFinite(x) && Number.isFinite(y)) {
-      const p = { x, y };
-      setPoint(p);
-      onPointChange?.(p);
-    } else {
-      onPointChange?.(null);
+  // The symbolic derivation depends only on the expression; the point only adds evaluations.
+  const derived = useMemo(() => deriveExpression(expression, mode), [expression, mode]);
+  const report = useMemo(() => buildDerivativeReport(derived, point), [derived, point]);
+
+  const evalFn = useMemo(() => (x: number, y: number) => safeEvaluate(expression, { x, y }), [expression]);
+
+  // ∇f at P from the symbolic partials; central differences only when there is no symbolic form.
+  const gradient = useMemo(() => {
+    if (oneVariable || !point) return null;
+    const [dx, dy] = report.derivatives;
+    if (dx?.node && dy?.node) {
+      const dfdx = dx.valueAtPoint ?? NaN;
+      const dfdy = dy.valueAtPoint ?? NaN;
+      return { dfdx, dfdy, mag: Math.hypot(dfdx, dfdy), numeric: false };
     }
-  }, [rawPoint, onPointChange]);
-
-  const evalFn = useMemo(
-    () => (x: number, y: number) => safeEvaluate(expression, { x, y }),
-    [expression]
-  );
-
-  const gradient = useMemo(() => gradientAt(evalFn, point.x, point.y), [evalFn, point]);
-  const finiteGradient =
-    [gradient.dfdx, gradient.dfdy, gradient.mag].every(Number.isFinite) ? gradient : null;
+    return { ...gradientAt(evalFn, point.x, point.y), numeric: true };
+  }, [oneVariable, point, report, evalFn]);
+  const finiteGradient = gradient && [gradient.dfdx, gradient.dfdy, gradient.mag].every(Number.isFinite) ? gradient : null;
 
   useEffect(() => {
-    onGradientChange?.(finiteGradient);
+    onPointChange?.(point && !oneVariable ? { x: point.x, y: point.y } : null);
+  }, [point, oneVariable, onPointChange]);
+
+  useEffect(() => {
+    onGradientChange?.(finiteGradient ? { dfdx: finiteGradient.dfdx, dfdy: finiteGradient.dfdy, mag: finiteGradient.mag } : null);
   }, [finiteGradient, onGradientChange]);
 
-  const symbolic = useMemo(() => trySymbolicDerivatives(expression.node), [expression]);
-
-  useEffect(() => {
-    onSymbolicChange?.(symbolic ? { dx: symbolic.dx, dy: symbolic.dy } : null);
-  }, [onSymbolicChange, symbolic]);
-
-  const valueAtPoint = useMemo(() => evalFn(point.x, point.y), [evalFn, point]);
-
-  const plane = useMemo(() => {
-    if (!finiteGradient) return null;
-    return tangentPlaneAt(evalFn, finiteGradient, point.x, point.y);
-  }, [evalFn, finiteGradient, point]);
-
   const scan = useMemo(() => analyzeDomainAndRange(evalFn, -5, 5, -5, 5, 40, 40), [evalFn]);
+  const invalidPct = scan.total > 0 ? ((scan.invalidPoints / scan.total) * 100).toFixed(1) : "0.0";
 
-  const invalidPct =
-    scan.total > 0 ? ((scan.invalidPoints / scan.total) * 100).toFixed(1) : "0.0";
+  const sources = report.derivatives.map((entry) => entry.source);
+  const status: { label: string; tone: ResultTone } = !report.verified
+    ? { label: "Un paso no superó la comprobación", tone: "error" }
+    : sources.every((source) => source === "rules")
+      ? { label: "Simbólica · pasos comprobados", tone: "ok" }
+      : sources.some((source) => source === null)
+        ? { label: "Forma simbólica no disponible", tone: "warning" }
+        : { label: "Resultado de mathjs, sin desarrollo", tone: "warning" };
 
-  const handleRecalc = () => {
-    onPointChange?.(point); // vuelve a emitir el punto actual
-  };
+  const where = point ? variables.map((name) => formatNumber(point[name], 10)).join(", ") : "";
+  const approx = (exact?: boolean) => (exact ? "=" : "≈");
+  const values: Array<{ label: string; value: string }> = [];
+  if (point) {
+    for (const entry of report.derivatives) {
+      const label = mode === "derivative" ? `f′(${where})` : `∂f/∂${entry.variable} (${where})`;
+      if (entry.node) {
+        const value = entry.valueAtPoint ?? NaN;
+        values.push({ label, value: Number.isFinite(value) ? `${approx(entry.exactAtPoint)} ${formatNumber(value)}` : "no existe / sin valor real" });
+      } else if (gradient?.numeric) {
+        // No symbolic form: central differences, labelled as an approximation.
+        const value = entry.variable === "x" ? gradient.dfdx : gradient.dfdy;
+        values.push({ label: `${label} · diferencias centrales`, value: Number.isFinite(value) ? `≈ ${formatNumber(value)}` : "—" });
+      } else {
+        values.push({ label, value: "—" });
+      }
+    }
+    if (mode === "gradient") values.push({ label: "‖∇f(P)‖", value: finiteGradient ? `≈ ${formatNumber(finiteGradient.mag)}` : "—" });
+    values.push({ label: `f(${where})`, value: Number.isFinite(report.valueOfF) ? `≈ ${formatNumber(report.valueOfF)}` : "sin valor real" });
+  }
 
-  const oneVariable = variables.length === 1;
+  const gradientTex: MathText | null =
+    mode === "gradient" && report.derivatives.every((entry) => entry.display)
+      ? {
+          text: `∇f = (${report.derivatives.map((entry) => entry.display?.text).join(", ")})`,
+          tex: `\\nabla f(x,y) = \\left(${report.derivatives.map((entry) => entry.display?.tex).join(",\\ ")}\\right)`,
+        }
+      : null;
 
   return (
-    <div className="nexor-module">
+    <div className="nexor-module" aria-busy={catchingUp}>
       <div className="nexor-module-config">
-        {!oneVariable && (
-          <div>
-            <Label htmlFor="derivative-point">Punto de evaluación (x₀,y₀)</Label>
-            <Input
-              id="derivative-point"
-              value={rawPoint}
-              onChange={(e) => setRawPoint(e.target.value)}
-              placeholder="Ej: 1,2"
-              aria-describedby="derivative-point-help"
-              className="mt-2 font-mono"
-            />
-            <p id="derivative-point-help" className="mt-1 text-xs text-muted-foreground">
-              Escribe x₀,y₀ separados por coma; los valores numéricos se recalculan en ese punto.
-            </p>
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={handleRecalc} size="sm">
-            {requestedCapability === "gradient" ? "Calcular gradiente" : "Recalcular"}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowAdvanced((s) => !s)} className="text-xs">
-            {showAdvanced ? "Ocultar ecuación del plano tangente" : "Ecuación del plano tangente"}
-          </Button>
+        <div>
+          <Label htmlFor="derivative-point">{oneVariable ? `Punto de evaluación ${variables[0]}₀` : "Punto de evaluación (x₀, y₀)"}</Label>
+          <Input
+            id="derivative-point"
+            value={rawPoint}
+            onChange={(e) => {
+              const value = e.target.value;
+              setRawPoints((current) => (oneVariable ? { ...current, one: value } : { ...current, two: value }));
+            }}
+            placeholder={oneVariable ? "Ej: 1" : "Ej: 1, 2"}
+            aria-invalid={!parsed.ok}
+            aria-describedby="derivative-point-help"
+            className="mt-2 font-mono"
+          />
+          <p id="derivative-point-help" className={parsed.ok ? "mt-1 text-xs text-muted-foreground" : "mt-1 nexor-field-error"} role={parsed.ok ? undefined : "alert"}>
+            {parsed.ok
+              ? oneVariable
+                ? "Un número o una constante (pi/2, sqrt(2)…), con punto decimal. La derivada simbólica no depende del punto."
+                : "Dos valores separados por coma, con punto decimal; admiten constantes como pi/2."
+              : `${parsed.message} No se muestran valores en el punto hasta corregirlo.`}
+          </p>
         </div>
       </div>
 
       <ResultCard
-        title={requestedCapability === "gradient" ? "Gradiente" : oneVariable ? "Derivada" : "Derivadas parciales"}
-        status={
-          requestedCapability === "gradient"
-            ? finiteGradient
-              ? { label: "Numérico en P", tone: "ok" }
-              : { label: "Sin valor real en P", tone: "warning" }
-            : symbolic
-              ? { label: "Simbólica", tone: "ok" }
-              : { label: "Forma simbólica no disponible", tone: "warning" }
-        }
-        description={`${oneVariable ? "f(x)" : "f(x,y)"} = ${expression.source}`}
-        note={`Rango aproximado en [−5,5]²: ${
+        title={TITLES[mode]}
+        status={status}
+        description={`f(${variables.join(",")}) = ${expression.source}`}
+        note={`Rango aproximado de f en [−5,5]²: ${
           scan.range ? `${scan.range.min.toPrecision(4)} a ${scan.range.max.toPrecision(4)}` : "—"
         } · puntos sin valor real: ${scan.invalidPoints}/${scan.total} (${invalidPct}%)`}
-        procedure={
-          requestedCapability === "gradient"
-            ? "∂f/∂x y ∂f/∂y se aproximan en P mediante diferencias centrales; con ellas se forma ∇f(P) y se calcula su magnitud ‖∇f‖."
-            : "Las expresiones se obtuvieron mediante diferenciación simbólica, sin pasos algebraicos intermedios. Los valores en el punto se aproximan con diferencias centrales."
-        }
-        interpretation={
-          requestedCapability === "gradient"
-            ? "∇f indica la dirección de máximo crecimiento local de f en P; ‖∇f‖ mide qué tan rápido crece en esa dirección."
-            : oneVariable
-              ? "f′(x) es la tasa de cambio instantánea de f."
-              : "Cada derivada parcial mide el cambio de f respecto de una variable, manteniendo la otra constante."
-        }
       >
-        {requestedCapability === "gradient" ? (
-          <>
-            <ResultFormula primary>
-              <p>
-                ∇f({point.x}, {point.y}) ={" "}
-                {finiteGradient ? `(${finiteGradient.dfdx.toPrecision(6)}, ${finiteGradient.dfdy.toPrecision(6)})` : "—"}
-              </p>
-            </ResultFormula>
-            <ResultValues
-              items={[
-                { label: "‖∇f‖", value: finiteGradient ? finiteGradient.mag.toPrecision(6) : "—" },
-                { label: "f(P)", value: Number.isFinite(valueAtPoint) ? valueAtPoint.toPrecision(6) : "—" },
-              ]}
-            />
-          </>
-        ) : symbolic ? (
-          <>
-            <ResultFormula primary>
-              {oneVariable ? (
-                <p>f′(x) = {symbolic.dx}</p>
+        <ResultFormula primary>
+          {gradientTex ? (
+            <MathFormula math={gradientTex} display />
+          ) : (
+            report.derivatives.map((entry) =>
+              entry.display ? (
+                <MathFormula
+                  key={entry.variable}
+                  math={{ text: entry.display.text, tex: `${lhsTex(entry.variable, mode)} = ${entry.display.tex}` }}
+                  display
+                />
               ) : (
-                <>
-                  <p>∂f/∂x = {symbolic.dx}</p>
-                  <p>∂f/∂y = {symbolic.dy}</p>
-                </>
-              )}
-            </ResultFormula>
-            <ResultValues
-              items={
-                oneVariable
-                  ? [{ label: "f′(0)", value: finiteGradient ? finiteGradient.dfdx.toPrecision(6) : "—" }]
-                  : [
-                      { label: `∂f/∂x (${point.x}, ${point.y})`, value: finiteGradient ? finiteGradient.dfdx.toPrecision(6) : "—" },
-                      { label: `∂f/∂y (${point.x}, ${point.y})`, value: finiteGradient ? finiteGradient.dfdy.toPrecision(6) : "—" },
-                    ]
-              }
+                <p key={entry.variable} className="text-sm text-muted-foreground">
+                  Sin forma simbólica para la derivada respecto de {entry.variable}: {entry.unavailable}
+                </p>
+              ),
+            )
+          )}
+          {mode === "gradient" && finiteGradient && point && (
+            <MathFormula
+              math={{
+                text: `∇f(${where}) ≈ (${formatNumber(finiteGradient.dfdx)}, ${formatNumber(finiteGradient.dfdy)})`,
+                tex: `\\nabla f(${where}) ${!finiteGradient.numeric && report.derivatives.every((entry) => entry.exactAtPoint) ? "=" : "\\approx"} \\left(${numberTex(finiteGradient.dfdx)},\\ ${numberTex(finiteGradient.dfdy)}\\right)`,
+              }}
+              display
             />
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            La diferenciación simbólica no produjo una forma para esta expresión.
-          </p>
-        )}
-        {showAdvanced && (
-          <ResultFormula>
-            <p>
-              Plano tangente: {plane
-                ? `z ≈ ${plane.z0.toPrecision(4)} + ${plane.a.toPrecision(4)}(x − ${point.x}) + ${plane.b.toPrecision(4)}(y − ${point.y})`
-                : "—"}
-            </p>
-          </ResultFormula>
-        )}
+          )}
+        </ResultFormula>
+        {values.length > 0 && <ResultValues items={values} />}
       </ResultCard>
+
+      <ProcedurePanel procedure={report.procedure} />
     </div>
   );
 }

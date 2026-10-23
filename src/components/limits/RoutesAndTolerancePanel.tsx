@@ -32,6 +32,8 @@ type Props = {
   routes: RoutesParams;
   tolerances: ToleranceParams;
   busy?: boolean;
+  /** False while the inputs cannot produce routes (e.g. an invalid point). */
+  canRegenerate?: boolean;
   resultSummary?: { ok: boolean; text: string } | null;
 
   onChangeRoutes: (p: RoutesParams) => void;
@@ -44,6 +46,7 @@ export function RoutesAndTolerancePanel({
   routes,
   tolerances,
   busy = false,
+  canRegenerate = true,
   resultSummary,
   onChangeRoutes,
   onChangeTolerances,
@@ -63,7 +66,7 @@ export function RoutesAndTolerancePanel({
         <header className="flex flex-wrap items-center justify-between gap-2">
           <h4 className="text-sm font-semibold text-foreground">Rutas de aproximación</h4>
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={onRegenerate} disabled={busy}>
+            <Button size="sm" onClick={onRegenerate} disabled={busy || !canRegenerate}>
               {busy ? "Generando..." : "Regenerar rutas"}
             </Button>
             <Button size="sm" variant="outline" onClick={onReset} disabled={busy}>

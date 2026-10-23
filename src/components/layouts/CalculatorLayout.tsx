@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "./AppShell";
 import { FunctionInput } from "../FunctionInput";
-import { SurfaceVisualizer } from "../SurfaceVisualizer";
 import { FunctionsTable } from "../FunctionsTable";
 import DerivativesCalculator from "../derivatives-calculator";
 import OptimizationCalculator from "../optimization-calculator";
@@ -18,6 +17,10 @@ import {
   type DerivativeExploreCapability,
 } from "../workspace/explore-actions";
 import { analyzeExpressionResult, type ExpressionCapability } from "../../lib/capabilities";
+
+// Plotly is most of the JavaScript: the viewer loads in its own chunk so the editor is usable first.
+const SurfaceVisualizer = lazy(() => import("../SurfaceVisualizer").then((module) => ({ default: module.SurfaceVisualizer })));
+const SURFACE_UPDATE_DELAY_MS = 300;
 
 type Point = { x: number; y: number };
 type LimitPath = { label: string; points: Point[] };
@@ -140,22 +143,36 @@ export function CalculatorLayout() {
     return () => window.clearTimeout(timer);
   }, [parsedExpression]);
 
+  // The 3D surface is the most expensive render (Plotly): it follows the equation after a
+  // pause in typing instead of on every keystroke. Meanwhile the viewer says it is updating.
+  const [surfaceExpression, setSurfaceExpression] = useState(expression);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSurfaceExpression(expression), SURFACE_UPDATE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [expression]);
+  // Drawable only if it is a function of x and/or y; otherwise wait for the debounced value.
+  const plottedExpression =
+    surfaceExpression && surfaceExpression.variables.length > 0 && surfaceExpression.variables.every((name) => name === "x" || name === "y")
+      ? surfaceExpression
+      : null;
+  const surfaceUpdating = plottedExpression !== expression;
+
   // Calcula un rango aproximado de z para ayudar a la visualización (solo si hay superficie)
   const zRange = useMemo(() => {
-    if (!expression || !canShowSurface) return null;
+    if (!plottedExpression || !canShowSurface) return null;
     const xs = Array.from({ length: 32 }, (_, i) => -4 + i * 0.25);
     const ys = Array.from({ length: 32 }, (_, i) => -4 + i * 0.25);
     let zmin = Infinity, zmax = -Infinity;
     for (const x of xs) for (const y of ys) {
       try {
-        const v = evaluateCompiled(expression, { x, y });
+        const v = evaluateCompiled(plottedExpression, { x, y });
         if (Number.isFinite(v)) { if (v < zmin) zmin = v; if (v > zmax) zmax = v; }
       } catch {
         // Invalid samples are excluded from the visual range.
       }
     }
     return isFinite(zmin) && isFinite(zmax) ? { zmin, zmax } : null;
-  }, [expression, canShowSurface]);
+  }, [plottedExpression, canShowSurface]);
 
   // HUD: only values already produced by the active operation (one extra f(P) evaluation).
   const valueAtDerivativePoint = useMemo(
@@ -314,22 +331,31 @@ export function CalculatorLayout() {
                     </label>
                   ))}
               </fieldset>
-              <div className="nexor-viz-plot">
+              <div className="nexor-viz-plot" aria-busy={surfaceUpdating}>
+                {surfaceUpdating && (
+                  <p className="nexor-viz-updating" role="status">
+                    Actualizando superficie…
+                  </p>
+                )}
                 {/* Only the active tool's overlays reach the surface. */}
-                <SurfaceVisualizer
-                  expression={expression}
-                  point={(tool === "derivatives" ? derivativePoint : tool === "limits" ? limitPoint : null) ?? undefined}
-                  candidates={tool === "opt" ? optPoints : NO_CANDIDATES}
-                  regionRect={tool === "integration" ? regionRect : null}
-                  zRange={layers.rangePlanes ? zRange : null}
-                  limitPaths={tool === "limits" ? pathsLimits : NO_PATHS}
-                  regionTypeI={tool === "integration" ? regionTypeI : null}
-                  regionTypeII={tool === "integration" ? regionTypeII : null}
-                  regionPolar={tool === "integration" ? regionPolar : null}
-                  showTangent={tool === "derivatives" && layers.tangent}
-                  showGradient={tool === "derivatives" && layers.gradient}
-                  showZeroPlane={layers.zeroPlane}
-                />
+                {plottedExpression && (
+                  <Suspense fallback={<p className="nexor-empty-note" role="status">Cargando la visualización 3D…</p>}>
+                    <SurfaceVisualizer
+                      expression={plottedExpression}
+                      point={(tool === "derivatives" ? derivativePoint : tool === "limits" ? limitPoint : null) ?? undefined}
+                      candidates={tool === "opt" ? optPoints : NO_CANDIDATES}
+                      regionRect={tool === "integration" ? regionRect : null}
+                      zRange={layers.rangePlanes ? zRange : null}
+                      limitPaths={tool === "limits" ? pathsLimits : NO_PATHS}
+                      regionTypeI={tool === "integration" ? regionTypeI : null}
+                      regionTypeII={tool === "integration" ? regionTypeII : null}
+                      regionPolar={tool === "integration" ? regionPolar : null}
+                      showTangent={tool === "derivatives" && layers.tangent}
+                      showGradient={tool === "derivatives" && layers.gradient}
+                      showZeroPlane={layers.zeroPlane}
+                    />
+                  </Suspense>
+                )}
               </div>
               {hud.length > 0 && (
                 <dl className="nexor-hud" aria-label="Valores de la operación activa">

@@ -30,6 +30,13 @@ describe("compileExpression", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("rejects a function name used as a value (x + sin) and keeps constants", () => {
+    const result = compileExpression("x^2 + sin");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.message).toMatch(/«sin» es una función/);
+    expect(compileExpression("sin(x) + pi * e").ok).toBe(true);
+  });
+
   it("returns NaN instead of throwing when a variable is missing from the scope", () => {
     expect(safeEvaluate(compiled("t^2"), { x: 1, y: 1 })).toBeNaN();
   });
