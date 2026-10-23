@@ -188,7 +188,7 @@ resolución de módulos `Node` no lee el campo `exports` del paquete.
 │   ├── App.css                   # Estilos del shell, workspace, ResultCard y visor
 │   ├── components/
 │   │   ├── layouts/
-│   │   │   ├── AppShell.tsx          # Sidebar, topbar con contexto, navegación móvil, historial
+│   │   │   ├── AppShell.tsx          # Sidebar, topbar con contexto, navegación móvil, historial (+ AppShell.test.tsx)
 │   │   │   └── CalculatorLayout.tsx  # Orquestador del workspace
 │   │   ├── workspace/
 │   │   │   ├── ExplorePanel.tsx      # Selector de operación
@@ -723,7 +723,7 @@ el historial desde la interfaz.
 
 - **Framework:** Jest 30 con `ts-jest` (entorno `node`).
 - **Ubicación:** junto al código (`src/lib/*.test.ts`,
-  `src/components/workspace/*.test.tsx`).
+  `src/components/workspace/*.test.tsx`, `src/components/layouts/*.test.tsx`).
 - **Estado actual:** 10 suites, 111 tests.
 
 | Suite | Tests | Cubre |
@@ -732,7 +732,7 @@ el historial desde la interfaz.
 | `operation-procedures.test.ts` | 12 | Integrales rectangular (8/3), polar (π/2) y triple (8) con su error estimado; muestras sin valor real; cálculo del worker; límites estable, dependiente de la ruta y no uniforme; Lagrange con gradientes simbólicos y residuos |
 | `ProcedurePanel.test.tsx` | 11 | Render del panel: pasos numerados, tipos, comprobaciones, regla/transformación/explicación, relación, limitaciones, control de contraer, aplicaciones bajo demanda; KaTeX con MathML, texto de respaldo y escape de marcado |
 | `point.test.ts` | 11 | Puntos válidos y constantes, entre paréntesis; coma como separador y aviso de punto decimal; vacíos, número de valores incorrecto, texto, no finitos |
-| `gradient-point.test.ts` | 8 | Gradiente de `x² + y²` en (0,0) y (2,3) con valores exactos y √52; mismo resultado con `(2, 3)`; cambiar el punto actualiza todos los valores sin alterar la derivación compartida; `sin(x)·cos(y)` en dos puntos; puntos vacíos, parciales e inválidos; magnitud exacta y aproximada |
+| `gradient-point.test.ts` | 10 | Gradiente de `x² + y²` en (0,0) y (2,3) con valores exactos y √52; mismo resultado con `(2, 3)`; cambiar el punto actualiza todos los valores sin alterar la derivación compartida; `sin(x)·cos(y)` en dos puntos; puntos vacíos, parciales e inválidos; magnitud exacta y aproximada |
 | `expression.test.ts` | 6 | Compilación, variables, funciones integradas, expresión incompleta, función usada como valor, evaluación segura |
 | `capabilities.test.ts` | 6 | Capacidades por tipo de expresión, comprobadas contra los motores |
 | `integration-run.test.ts` | 7 | Integral válida, resultados no finitos, excepciones, variable incorrecta en límites, límites invertidos |
@@ -862,6 +862,13 @@ Vite avisa de que los dos primeros chunks superan 500 kB; es esperado
 - Integración: la triple con `n = 80` evalúa unos 4,7 millones de puntos y
   tarda varios segundos (ya no bloquea la interfaz); `n` no tiene tope
   superior.
+- Rendimiento: con expresiones grandes, el desarrollo se recalcula en el hilo
+  principal. Por ejemplo, el gradiente de `(x^2 - y^2)/(x^2 + y^2) + exp(x*y)`
+  tarda unos 2,9 s en estabilizarse, con pausas de hasta ≈ 0,6 s en el build de
+  producción (medido en Edge a 375 px).
+- Fórmulas: una expresión que no cabe ni partida (fracciones dentro de
+  fracciones) se desplaza en horizontal dentro de su propia caja; en algunos
+  anchos el exceso es de solo 1–2 px.
 - Optimización: las semillas cubren solo `[−5,5]²` y la búsqueda se detiene en
   21 candidatos. Cuando `f` es constante sobre la restricción, todo punto de la
   restricción es crítico y se listan hasta 21 muestras como «indeterminado».
@@ -915,7 +922,10 @@ Resultados comprobados para la versión 1.1.0:
 | `npx tsc --noEmit` | 0 errores |
 | `npm run lint` | 0 problemas |
 | `npm run build` | Correcto |
-| Navegador (Edge, Playwright) | 55/55 comprobaciones funcionales en 1440 × 900, 768 × 1024, 375 × 812 y 360 × 740: resultados, procedimientos, controles del panel y teclado, puntos y restricciones inválidos, cancelación, ausencia de resultados obsoletos tras cambiar la ecuación, sin desbordamiento horizontal, sin «NaN» en la operación y sin errores de consola |
+| Navegador (Edge, Playwright) | 55/55 comprobaciones funcionales en 1440 × 900, 768 × 1024, 375 × 812, 360 × 740 y 320 × 700: resultados, procedimientos, controles del panel y teclado, puntos y restricciones inválidos, cancelación, ausencia de resultados obsoletos tras cambiar la ecuación, sin desbordamiento horizontal, sin «NaN» en la operación y sin errores de consola |
+| Menú móvil (Playwright) | 23/23 comprobaciones en 320, 360, 375, 390, 430 y 768 px: visible al abrirlo al inicio, a mitad y al final, sin cambio de scroll, Escape con retorno del foco, cierre al tocar fuera y al elegir una opción, ecuación conservada. Inicio, mitad y final también en WebKit y Firefox (320, 375 y 768 px). Barra lateral correcta en 1024 × 800 y 1440 × 900 |
+| Gradiente y fórmulas (Playwright) | 20/20 comprobaciones en 8 tamaños (320 a 1440 px): `x² + y²` en (0,0) y (2,3), `sin(x)·cos(y)` en dos puntos, punto entre paréntesis, vacío y parcial, conservación del punto al cambiar de operación; fórmulas cortas y medianas sin barras de desplazamiento ni recortes |
+| No verificado | Dispositivos reales, Safari en iOS (solo WebKit en Windows) y uso con lector de pantalla. Las pruebas de navegador no forman parte del repositorio |
 
 ## 26. Ejemplos validados
 

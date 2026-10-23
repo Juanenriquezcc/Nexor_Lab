@@ -163,6 +163,11 @@ Controles:
 - **Contraer** oculta el desarrollo; **Ver N pasos** lo vuelve a mostrar.
 - Al final aparecen las **Limitaciones** de ese cálculo.
 
+Las fórmulas largas se parten en varias líneas cuando falta espacio. Si una
+expresión muy grande no cabe ni así (por ejemplo, fracciones dentro de
+fracciones), desliza esa fórmula en horizontal: solo se desplaza ella, no la
+página.
+
 ## 7. Derivadas
 
 Para una función de una variable, por ejemplo `x^3 + 2x^2 - 5x + 1`:
